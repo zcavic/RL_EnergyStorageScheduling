@@ -11,6 +11,9 @@ class HeuristicStorageScheduler(object):
     def calculate(self):
         pass
 
+
     #poziva calculate za svaki primjer iz df_test
     def test(self, df_test):
-        pass
+        self.power_flow.calculate_power_flow()
+        print (self.power_flow.get_bus_voltages())
+        print (self.power_flow.get_lines_apparent_power())
