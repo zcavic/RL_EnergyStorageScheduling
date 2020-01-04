@@ -31,5 +31,8 @@ def create_network():
 
     for i in range(0, 2):
         pp.create_line(network, from_bus=busNodes[i], to_bus=busNodes[i+1], length_km=2, name="Line_" + str(i+1), std_type="NA2XS2Y 1x150 RM/25 12/20 kV")
+	
+    # Storage
+    pp.create_storage(network, bus=busNodes[1], p_mw = 3, max_e_mwh = 10, soc_percent = 0.5, min_e_mwh = 1)
 
     return network
