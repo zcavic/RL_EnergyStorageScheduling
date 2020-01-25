@@ -20,19 +20,26 @@ def create_network():
     # Buses
     for i in range(0, 3):
         busNodes.append(pp.create_bus(network, vn_kv=20, name="Bus_" + str(i+1)))
+        #todo od svih nam je trenutno potreban samo lowVoltageBusNodes[2], ali neka ga za sada zbog lakseg indeksiranja
         lowVoltageBusNodes.append(pp.create_bus(network, vn_kv=0.4, name="LowVoltageBus_" + str(i+1)))
-        pp.create_transformer(network, hv_bus=busNodes[i], lv_bus=lowVoltageBusNodes[i], std_type="SN/NN 1MVA", name="Transformer_" + str(i+1))
 
     # Load in node 3
-    pp.create_load(network, bus=lowVoltageBusNodes[2], p_mw=6, q_mvar=1, name="Load_" + str(2+1))
+    pp.create_load(network, bus=lowVoltageBusNodes[2], p_mw=3, q_mvar=1, name="Load_" + str(2+1))
+    pp.create_transformer(network, hv_bus=busNodes[2], lv_bus=lowVoltageBusNodes[2], std_type="SN/NN 1MVA", name="Transformer_" + str(2+1))
+
+    # Solar generator in node 2
+    # sgen -> static generator (PQ, not PV)
+    pp.create_sgen(network, bus=busNodes[1], p_mw=6, q_mvar=1, name="Gen_" + str(2+1))
+
+    # Storage in node 1
+    # p > 0 - charging
+    # p < 0 - discharging
+    pp.create_storage(network, bus=busNodes[0], p_mw = 3, max_e_mwh = 1000000, soc_percent = 0.5, min_e_mwh = 0)
 
     # Lines
     pp.create_line(network, from_bus=mediumVoltageBusNode, to_bus=busNodes[0], length_km=0.5, name="Line_0", std_type="NA2XS2Y 1x150 RM/25 12/20 kV")
 
     for i in range(0, 2):
-        pp.create_line(network, from_bus=busNodes[i], to_bus=busNodes[i+1], length_km=2, name="Line_" + str(i+1), std_type="NA2XS2Y 1x150 RM/25 12/20 kV")
+        pp.create_line(network, from_bus=busNodes[i], to_bus=busNodes[i+1], length_km=1, name="Line_" + str(i+1), std_type="NA2XS2Y 1x150 RM/25 12/20 kV")
 	
-    # Storage
-    pp.create_storage(network, bus=busNodes[1], p_mw = 3, max_e_mwh = 10, soc_percent = 0.5, min_e_mwh = 1)
-
     return network
