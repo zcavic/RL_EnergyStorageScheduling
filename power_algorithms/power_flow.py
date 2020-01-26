@@ -73,12 +73,13 @@ class PowerFlow:
         n_capacitors = len(self.network_manager.get_all_capacitors())
         n_consumers = len(self.network_manager.power_grid.load.index)
 
-        columns = ['solar1', 'load1']
-        index = [i for i in range(48)]
+        columns = ['time', 'solar1', 'load1']
+        index = [i for i in range(96)]
         df = pandas.DataFrame(index=index, columns=columns)
         df = df.fillna(0)
         #trenutno prve 24 tacke predstavljaju scaling za solar, a naredne 24 za load
         for index, row in df.iterrows():
+            df.loc[index, 'time'] = index #potrebno je kasnije zbog izvlacenja pocetaka dana 
             hour = index % 24 + 1
             if (hour >= 8 and hour <= 16 ):
                 df.loc[index, 'solar1'] = 1.0 # eventualno kasnije + random.random()

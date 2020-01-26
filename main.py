@@ -12,7 +12,11 @@ from utils import load_dataset, split_dataset
 def main():
     #dataset contains power injection of nodes
     df = load_dataset()
-    df_train, df_test = split_dataset(df, 23)
+    df_train, df_test = split_dataset(df, 47)
+
+    #network_manager = nm.NetworkManagement()
+    #power_flow = PowerFlow(network_manager)
+    #power_flow.create_data_set()
 
     #print('=====================Heuristic calculation=====================')
     #heuristic = HeuristicStorageScheduler() 
@@ -24,14 +28,14 @@ def main():
     print('=====================agent=====================')
     agent = DeepQLearningAgent(environment_discrete)
 
-    n_episodes = 100
+    n_episodes = 3000
     print('agent training started')
     t1 = time.time()
     agent.train(df_train, n_episodes)
     t2 = time.time()
     print ('agent training finished in', t2-t1)
 
-    #agent.test(df_test)
+    agent.test(df_test)
 
 if __name__ == '__main__':
     main()

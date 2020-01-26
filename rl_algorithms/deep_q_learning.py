@@ -3,7 +3,7 @@ from itertools import count
 import random
 import matplotlib.pyplot as plt
 import time
-from utils import select_random_day, get_scaling_from_row
+from utils import *
 
 import torch
 import torch.nn as nn
@@ -39,11 +39,11 @@ class ReplayMemory(object):
 class DQN(nn.Module):
     def __init__(self, input_size, output_size):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(input_size, 50)
-        self.fc2 = nn.Linear(50, 50)
-        self.fc3 = nn.Linear(50, 50)
-        self.fc3_bn = nn.BatchNorm1d(50)
-        self.fc4 = nn.Linear(50, output_size)
+        self.fc1 = nn.Linear(input_size, 30)
+        self.fc2 = nn.Linear(30, 30)
+        self.fc3 = nn.Linear(30, 30)
+        self.fc3_bn = nn.BatchNorm1d(30)
+        self.fc4 = nn.Linear(30, output_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -56,7 +56,7 @@ class DeepQLearningAgent:
 
     def __init__(self, environment):
         self.environment = environment
-        self.epsilon = 0.1
+        self.epsilon = 0.5
         self.batch_size = 32
         self.gamma = 0.95
         self.target_update = 5
@@ -103,9 +103,8 @@ class DeepQLearningAgent:
         for i_episode in range(n_episodes):
             if (i_episode % 1 == 0):
                 print("=========Episode: ", i_episode)
-            self.epsilon = 0.1
-            #if (i_episode == int(0.02 * n_episodes)):
-                #self.epsilon = 0.1
+            if (i_episode == int(0.05 * n_episodes)):
+                self.epsilon = 0.1
 
             done = False
 
@@ -165,7 +164,48 @@ class DeepQLearningAgent:
 
 
     def test(self, df_test):
-        pass
+        print('agent testing started')
+        self.policy_net.load_state_dict(torch.load("policy_net"))
+        self.policy_net.eval()
+
+        day_starts = extract_day_starts(df_test)
+        day_start_times = list(day_starts.time)
+        for day_start_time in day_start_times: 
+            df_test_day = df_test[(df_test.time >= day_start_time) & (df_test.time < day_start_time + 24)]
+
+            done = False
+            state = self.environment_reset(df_test_day)
+            state = torch.tensor([state], dtype=torch.float)
+            total_episode_reward = 0
+            #todo neka ove promjenljive budu ukupne snage u mrezi u aps. jedinicama
+            solar_powers = []
+            load_powers = []
+            storage_powers = []
+
+            #inicijalni red iz dataframe sluzi za inicijalizaciju, on se u okviru predstojece petlje preskace
+            first_row = df_test_day.iloc[0]
+            first_solar_percents, first_load_percents = get_scaling_from_row(first_row)
+            solar_powers.append(first_solar_percents[0] * -1)
+            load_powers.append(first_load_percents[0])
+
+            for next_timestep_idx in range(1, len(df_test_day)+1):
+                action = self.get_action(state, epsilon = 0.0)
+                storage_powers.append(action)
+                if abs(action) > 1.0:
+                    print('Warning: deep_q_learning.train - abs(action) > 1')
+                if (next_timestep_idx < len(df_test_day)):
+                    row = df_test_day.iloc[next_timestep_idx]
+                    next_solar_percents, next_load_percents = get_scaling_from_row(row)
+                    solar_powers.append(next_solar_percents[0] * -1)
+                    load_powers.append(next_load_percents[0])
+
+                next_state, reward, done = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                total_episode_reward += reward
+                print('action', action)
+                print(state)
+                state = torch.tensor([next_state], dtype=torch.float)
+            print('total_episode_reward', total_episode_reward)
+            plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, storage_powers)
 
     def optimize_model(self):
         if len(self.memory) < self.batch_size:
