@@ -56,10 +56,10 @@ class DeepQLearningAgent:
 
     def __init__(self, environment):
         self.environment = environment
-        self.epsilon = 0.5
-        self.batch_size = 32
-        self.gamma = 0.95
-        self.target_update = 5
+        self.epsilon = 0.2
+        self.batch_size = 64
+        self.gamma = 0.9
+        self.target_update = 10
         self.memory = ReplayMemory(1000000)
 
         self.state_space_dims = environment.state_space_dims
@@ -72,7 +72,7 @@ class DeepQLearningAgent:
 
         self.policy_net.train() #train mode (train vs eval mode)
 
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=0.00001) #todo pokusaj nesto drugo
+        self.optimizer = optim.Adam(self.policy_net.parameters()) #todo pokusaj nesto drugo
         #self.optimizer = optim.RMSprop(self.policy_net.parameters())
 
     #return set point on the energy storage
@@ -99,12 +99,13 @@ class DeepQLearningAgent:
 
 
     def train(self, df_train, n_episodes):
+        self.policy_net.load_state_dict(torch.load("policy_net"))
         total_episode_rewards = []
         for i_episode in range(n_episodes):
-            if (i_episode % 1 == 0):
+            if (i_episode % 50 == 0):
                 print("=========Episode: ", i_episode)
-            if (i_episode == int(0.05 * n_episodes)):
-                self.epsilon = 0.1
+            #if (i_episode == int(0.05 * n_episodes)):
+                #self.epsilon = 0.1
 
             done = False
 
@@ -141,14 +142,14 @@ class DeepQLearningAgent:
                 if (next_timestep_idx != self.environment.timestep):
                     print('Warning: deep_q_learning.train - something may be wrong with timestep indexing')
 
-            if (i_episode % 1 == 0):
+            if (i_episode % 50 == 0):
                 print ("total_episode_reward: ", total_episode_reward)
 
             total_episode_rewards.append(total_episode_reward)
             
-            if (i_episode % 500 == 499):
+            if (i_episode % 200 == 199):
                 torch.save(self.policy_net.state_dict(), "policy_net")
-                time.sleep(30)
+                time.sleep(3)
 
             if i_episode % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -253,6 +254,7 @@ class DeepQLearningAgent:
 
         self.optimizer.zero_grad()
         loss.backward()
-        for param in self.policy_net.parameters():
-            param.grad.data.clamp_(-1, 1)
+        #todo razmisli
+        #for param in self.policy_net.parameters():
+            #param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
