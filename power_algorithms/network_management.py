@@ -33,6 +33,17 @@ class NetworkManagement:
         for index, load in self.power_grid.load.iterrows():
             self.power_grid.load.scaling.loc[index] = scaling_factors[index]
 
+    def set_generation_scaling(self, scaling_factors):
+        if (len(scaling_factors) != len(self.power_grid.sgen.index)):
+            print("(ERROR) Input list of scaling factors {} is not the same length as number of generators {}".format(len(scaling_factors), len(self.power_grid.load.index)))
+            return
+
+        for index, sgen in self.power_grid.sgen.iterrows():
+            self.power_grid.sgen.scaling.loc[index] = scaling_factors[index]
+
+    def set_storage_scaling(self, scaling_value, index):
+        self.power_grid.storage.scaling.loc[index] = scaling_value
+
     def set_capacitors_initial_status(self, capacitors_statuses):
         capacitor_indices = self.get_capacitor_indices_from_shunts()
         if (len(capacitors_statuses) != len(capacitor_indices)):
