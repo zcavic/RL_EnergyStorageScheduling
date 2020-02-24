@@ -3,20 +3,19 @@ from power_algorithms.forecast import Forecast
 
 
 def _get_storage_capacity_timeline(storage_actions_timeline: list):
-
     storage_capacity_timeline = [0] * len(storage_actions_timeline)
     for timestamp in range(len(storage_actions_timeline)):
         next_timestamp = timestamp
         while next_timestamp < len(storage_actions_timeline):
             storage_capacity_timeline[next_timestamp] = storage_capacity_timeline[next_timestamp] + \
-                                                              storage_actions_timeline[timestamp]
+                                                        storage_actions_timeline[timestamp]
             next_timestamp = next_timestamp + 1
 
     minimum = min(storage_capacity_timeline)
     if minimum < 0:
         for timestamp in range(len(storage_capacity_timeline)):
             storage_capacity_timeline[timestamp] = storage_capacity_timeline[timestamp] + \
-                                                         abs(minimum)
+                                                   abs(minimum)
 
     return storage_capacity_timeline
 
@@ -26,13 +25,29 @@ class HeuristicStorageScheduler(object):
     def __init__(self, energy_storage: EnergyStorage, forecast: Forecast):
         self._storage_power = energy_storage.energyStorageState.max_power
         self._storage_capacity = energy_storage.energyStorageState.capacity
+        self._energy_storage = energy_storage
         self._consumption = forecast.consumption.copy()
         self._old_consumption = forecast.consumption.copy()
         self._storage_actions_timeline = [0] * len(self._consumption)
         self._storage_capacity_timeline = [0] * len(self._consumption)
-        self._step = 0.5  # this is step (percent of nominal power) for gradient charge or discharge of energy storage
+        self._step = 0.1  # this is step (percent of nominal power) for gradient charge or discharge of energy storage
 
-        print('Old consumption: ', forecast.consumption)
+    def start(self):
+        self.calculate_storage_schedule()
+        print('Actions:  ', self._storage_actions_timeline)
+        print('Capacity: ', self._storage_capacity_timeline)
+        for timestamp in range(len(self._consumption)):
+            self._send_action(timestamp)
+            self._energy_storage.tick()
+
+    def _send_action(self, timestamp):
+        action = self._storage_actions_timeline[timestamp]
+        if action < 0:
+            self._energy_storage.discharge(action)
+        elif action > 0:
+            self._energy_storage.charge(action)
+        else:
+            self._energy_storage.turn_off()
 
     def calculate_storage_schedule(self):
 
@@ -56,10 +71,6 @@ class HeuristicStorageScheduler(object):
             self._update_consumption_timeline()
             iterator = iterator + 1
 
-        print('New Consumption: ', self._consumption)
-        print('Actions:  ', self._storage_actions_timeline)
-        print('Capacity: ', self._storage_capacity_timeline)
-
     def _charge(self, storage_capacity_timeline: list, storage_actions_timeline: list, consumption: list):
 
         # case when charge was tried at all hours
@@ -68,14 +79,15 @@ class HeuristicStorageScheduler(object):
 
         timestamp = self._consumption.index(min(consumption))
 
-        new_capacity = storage_capacity_timeline[timestamp] + (self._storage_power * self._step)
-        new_action = storage_actions_timeline[timestamp] + (self._storage_power * self._step)
-        if new_capacity <= self._storage_capacity and new_action <= self._storage_power:
-            storage_actions_timeline[timestamp] = new_action
-            return True
-        else:
-            del consumption[consumption.index(min(consumption))]
-            return self._charge(storage_capacity_timeline, storage_actions_timeline, consumption)
+        if storage_actions_timeline[timestamp] >= 0:
+            new_capacity = storage_capacity_timeline[timestamp] + (self._storage_power * self._step)
+            new_action = storage_actions_timeline[timestamp] + (self._storage_power * self._step)
+            if new_capacity <= self._storage_capacity and new_action <= self._storage_power:
+                storage_actions_timeline[timestamp] = new_action
+                return True
+
+        del consumption[consumption.index(min(consumption))]
+        return self._charge(storage_capacity_timeline, storage_actions_timeline, consumption)
 
     def _discharge(self, storage_capacity_timeline: list, storage_actions_timeline: list, consumption: list):
 
@@ -85,14 +97,15 @@ class HeuristicStorageScheduler(object):
 
         timestamp = self._consumption.index(max(consumption))
 
-        new_capacity = storage_capacity_timeline[timestamp] - (self._storage_power * self._step)
-        new_action = storage_actions_timeline[timestamp] - (self._storage_power * self._step)
-        if new_capacity >= 0 and abs(new_action) <= self._storage_power:
-            storage_actions_timeline[timestamp] = new_action
-            return True
-        else:
-            del consumption[consumption.index(max(consumption))]
-            return self._discharge(storage_capacity_timeline, storage_actions_timeline, consumption)
+        if storage_actions_timeline[timestamp] <= 0:
+            new_capacity = storage_capacity_timeline[timestamp] - (self._storage_power * self._step)
+            new_action = storage_actions_timeline[timestamp] - (self._storage_power * self._step)
+            if new_capacity >= 0 and abs(new_action) <= self._storage_power:
+                storage_actions_timeline[timestamp] = new_action
+                return True
+
+        del consumption[consumption.index(max(consumption))]
+        return self._discharge(storage_capacity_timeline, storage_actions_timeline, consumption)
 
     def _validate_action(self, storage_actions_timeline: list):
         if max(_get_storage_capacity_timeline(storage_actions_timeline)) <= self._storage_capacity:

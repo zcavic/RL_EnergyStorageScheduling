@@ -19,8 +19,8 @@ def main():
     #power_flow.create_data_set()
 
     #print('=====================Heuristic calculation=====================')
-    #heuristic = HeuristicStorageScheduler() 
-    #heuristic.test(df_test)
+    heuristic = HeuristicStorageScheduler()
+    heuristic.start()
 
     #environment should'n have the entire dataset as an input parameter, but train and test methods
     environment_discrete = EnvironmentDiscrete()
