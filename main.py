@@ -1,7 +1,9 @@
 import os
 from environment.environment_discrete import EnvironmentDiscrete
+from environment.environment_continous import EnvironmentContinous
 import pandas as pd
 from rl_algorithms.deep_q_learning import DeepQLearningAgent
+from rl_algorithms.ddpg import DDPGAgent
 from power_algorithms.heuristic_storage_scheduler import HeuristicStorageScheduler
 from power_algorithms.power_flow import PowerFlow
 import power_algorithms.network_management as nm
@@ -18,15 +20,13 @@ def main():
     #power_flow = PowerFlow(network_manager)
     #power_flow.create_data_set()
 
-    #print('=====================Heuristic calculation=====================')
-    heuristic = HeuristicStorageScheduler()
-    heuristic.start()
-
     #environment should'n have the entire dataset as an input parameter, but train and test methods
-    environment_discrete = EnvironmentDiscrete()
+    #environment_discrete = EnvironmentDiscrete()
+    environment_continous = EnvironmentContinous()
 
     print('=====================agent=====================')
-    agent = DeepQLearningAgent(environment_discrete)
+    #agent = DeepQLearningAgent(environment_discrete)
+    agent = DDPGAgent(environment_continous)
 
     n_episodes = 500
     print('agent training started')

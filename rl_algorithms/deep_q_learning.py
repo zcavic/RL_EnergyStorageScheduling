@@ -99,7 +99,7 @@ class DeepQLearningAgent:
 
 
     def train(self, df_train, n_episodes):
-        self.policy_net.load_state_dict(torch.load("policy_net"))
+        #self.policy_net.load_state_dict(torch.load("policy_net"))
         total_episode_rewards = []
         for i_episode in range(n_episodes):
             if (i_episode % 50 == 0):
