@@ -26,8 +26,8 @@ class Critic(nn.Module):
 
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
-        x = torch.tanh(self.linear1(x))
-        x = torch.tanh(self.linear2_bn(self.linear2(x)))
+        x = torch.relu(self.linear1(x))
+        x = torch.relu(self.linear2_bn(self.linear2(x)))
         x = self.linear3(x) #returns q value, should not be limited by tanh
         return x
 
@@ -44,13 +44,13 @@ class Actor(nn.Module):
         self.linear3.bias.data.uniform_(-init_w, init_w)
 
     def forward(self, state):
-        x = torch.tanh(self.linear1(state))
-        x = torch.tanh(self.linear2_bn(self.linear2(x)))        
+        x = torch.relu(self.linear1(state))
+        x = torch.relu(self.linear2_bn(self.linear2(x)))        
         x = torch.tanh(self.linear3(x))
         return x
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.1, min_sigma=0.1, decay_period=100):
+    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.2, min_sigma=0.2, decay_period=100):
         self.mu           = mu
         self.theta        = theta
         self.sigma        = max_sigma
@@ -130,7 +130,7 @@ class ReplayBuffer:
         return len(self.buffer)
 
 class DDPGAgent:
-    def __init__(self, environment, hidden_size=30, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=0.99, tau=1e-2, max_memory_size=600000):
+    def __init__(self, environment, hidden_size=100, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0, tau=1e-3, max_memory_size=600000):
         self.environment = environment
         self.num_states = environment.state_space_dims
         self.num_actions = environment.action_space_dims
@@ -219,8 +219,16 @@ class DDPGAgent:
         #self.critic.load_state_dict(torch.load("model_critic"))
         total_episode_rewards = []
         for i_episode in range(n_episodes):
-            if (i_episode % 10 == 0):
+            if (i_episode % 100 == 0):
                 print("Episode: ", i_episode)
+
+            #self.noise.max_sigma = 0.3
+            #self.noise.min_sigma = 0.3
+            self.noise.max_sigma = 0.05
+            self.noise.min_sigma = 0.05
+            if (i_episode == 3000):
+                self.noise.max_sigma = 0.05
+                self.noise.min_sigma = 0.05
 
             df_train_day = select_random_day(df_train)
             state = self.environment_reset(df_train_day)
@@ -260,11 +268,13 @@ class DDPGAgent:
 
             total_episode_rewards.append(total_episode_reward)
             
-            if (i_episode % 10 == 0):
+            if (i_episode % 100 == 0):
                 print ("total_episode_reward: ", total_episode_reward)
             
+            if (i_episode % 500 == 499):
+                time.sleep(60)
+
             if (i_episode % 10 == 0):
-                #time.sleep(60)
                 torch.save(self.actor.state_dict(), "model_actor")
                 torch.save(self.critic.state_dict(), "model_critic")                
         
