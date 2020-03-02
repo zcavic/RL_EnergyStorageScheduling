@@ -89,7 +89,7 @@ class EnvironmentContinous(gym.Env):
         #za sada q ne razmatramo jer storage salje akcije samo po p
         #q idalje stoji u stanju, ako htjednemo da ukljucimo losses ovdje
         #ako je network_injected_p negativno, onda ce agent pokusavati da ga poveca - da poveca prodaju u prenosnu mrezu, to je ok
-        return -0.03 * self.power_flow.get_network_injected_p().values[0]
+        return -0.025 * self.power_flow.get_network_injected_p().values[0]
 
     def reset(self, solar_percents, load_percents):
         self.timestep = 0

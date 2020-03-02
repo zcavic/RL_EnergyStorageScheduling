@@ -50,7 +50,7 @@ class Actor(nn.Module):
         return x
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.2, min_sigma=0.2, decay_period=100):
+    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.05, min_sigma=0.05, decay_period=100):
         self.mu           = mu
         self.theta        = theta
         self.sigma        = max_sigma
@@ -138,7 +138,7 @@ class DDPGAgent:
         self.tau = tau
         self.timestep = 0
 
-        self.batch_size = 128
+        self.batch_size = 256
 
         self.actor = Actor(self.num_states, hidden_size, self.num_actions)
         self.actor_target = Actor(self.num_states, hidden_size, self.num_actions)
@@ -221,14 +221,6 @@ class DDPGAgent:
         for i_episode in range(n_episodes):
             if (i_episode % 100 == 0):
                 print("Episode: ", i_episode)
-
-            #self.noise.max_sigma = 0.3
-            #self.noise.min_sigma = 0.3
-            self.noise.max_sigma = 0.05
-            self.noise.min_sigma = 0.05
-            if (i_episode == 3000):
-                self.noise.max_sigma = 0.05
-                self.noise.min_sigma = 0.05
 
             df_train_day = select_random_day(df_train)
             state = self.environment_reset(df_train_day)
