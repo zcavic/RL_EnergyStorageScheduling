@@ -22,6 +22,9 @@ class EnergyStorage:
     def tick(self):
         self.energyStorageState.tick()
 
+    def get_power(self):
+        return self.energyStorageState.power
+
 
 class EnergyStorageState:
 

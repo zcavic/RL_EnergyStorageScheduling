@@ -1,4 +1,5 @@
 from environment.environment_continous import EnvironmentContinous
+from heuristic_algorithm.heuristic_storage_scheduler import HeuristicStorageScheduler
 from rl_algorithms.ddpg import DDPGAgent
 import time
 from utils import load_dataset, split_dataset
@@ -8,6 +9,10 @@ def main():
     #dataset contains power injection of nodes
     df = load_dataset()
     df_train, df_test = split_dataset(df, 47)
+
+    print('==============Heuristic algorithm==============')
+    heuristic_algorithm = HeuristicStorageScheduler()
+    heuristic_algorithm.start()
 
     #network_manager = nm.NetworkManagement()
     #power_flow = PowerFlow(network_manager)

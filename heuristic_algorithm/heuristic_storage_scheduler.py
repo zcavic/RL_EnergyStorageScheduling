@@ -1,5 +1,4 @@
-from environment.energy_storage import EnergyStorage
-from power_algorithms.forecast import Forecast
+from heuristic_algorithm.network_model import NetworkModel
 
 
 def _get_storage_capacity_timeline(storage_actions_timeline: list):
@@ -22,35 +21,23 @@ def _get_storage_capacity_timeline(storage_actions_timeline: list):
 
 class HeuristicStorageScheduler(object):
 
-    def __init__(self, energy_storage: EnergyStorage, forecast: Forecast):
-        self._storage_power = energy_storage.energyStorageState.max_power
-        self._storage_capacity = energy_storage.energyStorageState.capacity
-        self._energy_storage = energy_storage
-        self._consumption = forecast.consumption.copy()
-        self._old_consumption = forecast.consumption.copy()
+    def __init__(self):
+        self._network_model = NetworkModel()
+        self._energy_storage = self._network_model.energy_storage
+        self._storage_power = self._network_model.energy_storage.energyStorageState.max_power
+        self._storage_capacity = self._network_model.energy_storage.energyStorageState.capacity
+        self._consumption = self._network_model.forecast.consumption.copy()
+        self._old_consumption = self._network_model.forecast.consumption.copy()
         self._storage_actions_timeline = [0] * len(self._consumption)
         self._storage_capacity_timeline = [0] * len(self._consumption)
         self._step = 0.1  # this is step (percent of nominal power) for gradient charge or discharge of energy storage
 
     def start(self):
         self.calculate_storage_schedule()
-        print('Actions:  ', self._storage_actions_timeline)
-        print('Capacity: ', self._storage_capacity_timeline)
         for timestamp in range(len(self._consumption)):
-            self._send_action(timestamp)
-            self._energy_storage.tick()
-
-    def _send_action(self, timestamp):
-        action = self._storage_actions_timeline[timestamp]
-        if action < 0:
-            self._energy_storage.discharge(action)
-        elif action > 0:
-            self._energy_storage.charge(action)
-        else:
-            self._energy_storage.turn_off()
+            self._network_model.send_action(self._storage_actions_timeline[timestamp])
 
     def calculate_storage_schedule(self):
-
         charge = True
         discharge = True
         iterator = 0
