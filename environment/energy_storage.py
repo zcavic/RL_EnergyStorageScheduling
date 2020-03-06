@@ -4,48 +4,54 @@ from enum import Enum
 class EnergyStorage:
 
     def __init__(self, index, power_grid):
-        self.id = index
+        self.index = index
         self.power_grid = power_grid
-        self.max_p_kw = self.power_grid.storage.p_mw.loc[index]
-        self.max_e_mwh = self.power_grid.storage.max_e_mwh.loc[index]
-        self.energyStorageState = IdleState(self, self.max_e_mwh, self.max_p_kw, 0)
+        self.max_p_kw = self.power_grid.storage.p_mw.loc[self.index]
+        self.max_e_mwh = self.power_grid.storage.max_e_mwh.loc[self.index]
+        self.state = IdleState(self, self.max_e_mwh, self.max_p_kw, 0)
 
     def state(self):
-        return self.energyStorageState.state()
-
-    def charge(self, power):
-        self.energyStorageState.charge(power)
-
-    def discharge(self, power):
-        self.energyStorageState.discharge(power)
-
-    def turn_off(self):
-        self.energyStorageState.turn_off()
+        return self.state.state()
 
     def get_power(self):
-        return self.energyStorageState.power
+        return self.state.power
 
     def send_action(self, action):
-        self.energyStorageState.update_soc()
-        if action < -self.energyStorageState.soc or \
-                action > (self.energyStorageState.capacity - self.energyStorageState.soc):
-            self.energy_storage.turn_off()
+        self.state.update_soc()
+        self._update_state(action)
+        self._update_scaling()
+
+    def _charge(self, power):
+        self.state.charge(power)
+
+    def _discharge(self, power):
+        self.state.discharge(power)
+
+    def _turn_off(self):
+        self.state.turn_off()
+
+    def _update_state(self, action):
+        if action < -self.state.soc or \
+                action > (self.state.capacity - self.state.soc):
+            self.state.turn_off()
         if action < 0:
-            self.energy_storage.discharge(action)
+            self.state.discharge(action)
         elif action > 0:
-            self.energy_storage.charge(action)
+            self.state.charge(action)
         else:
-            self.energy_storage.turn_off()
-        self.power_grid.storage.scaling.loc[self.index] = self.energyStorageState.power / self.max_p_kw
+            self.state.turn_off()
+
+    def _update_scaling(self):
+        self.power_grid.storage.scaling.loc[self.index] = self.state.power / self.max_p_kw
 
 
-class EnergyStorageState:
+class State:
 
-    def __init__(self, energy_storage, capacity, max_power, current_capacity):
+    def __init__(self, energy_storage, capacity, max_power, soc):
         self._energy_storage = energy_storage
         self.capacity = capacity
         self.max_power = max_power
-        self.soc = current_capacity
+        self.soc = soc
         self.power = 0
 
     def state(self):
@@ -58,9 +64,9 @@ class EnergyStorageState:
         return
 
     def turn_off(self):
-        return
+        self._set_power(0)
 
-    def _update_soc(self):
+    def update_soc(self):
         return
 
     def _set_power(self, power):
@@ -70,91 +76,87 @@ class EnergyStorageState:
             self.power = power
 
 
-class IdleState(EnergyStorageState):
+class IdleState(State):
 
     def state(self):
-        return State.IDLE
+        return EnergyStorageState.IDLE
 
     # command for charge
     def charge(self, power):
-        if self.capacity != self.soc:
-            print('Idle state: start charging.')
-            self._energy_storage.energyStorageState = ChargingState(self._energy_storage, self.capacity,
-                                                                    self.max_power, self.soc)
-            self._energy_storage.energyStorageState._set_power(power)
+        print('Idle state: start charging.')
+        self._energy_storage.state = ChargingState(self._energy_storage, self.capacity, self.max_power, self.soc)
+        self._set_power(power)
 
     # command for discharge
     def discharge(self, power):
-        if self.soc != 0:
-            print('Idle state: start discharging.')
-            self._energy_storage.energyStorageState = DischargingState(self._energy_storage, self.capacity,
-                                                                       self.max_power, self.soc)
-            self._energy_storage.energyStorageState._set_power(power)
+        print('Idle state: start discharging.')
+        self._energy_storage.state = DischargingState(self._energy_storage, self.capacity, self.max_power, self.soc)
+        self._set_power(power)
 
 
-class ChargingState(EnergyStorageState):
+class ChargingState(State):
 
     def state(self):
-        return State.CHARGING
+        return EnergyStorageState.CHARGING
 
     # command for charge
     def discharge(self, power):
-        if self.current_capacity != 0:
-            print('Charging state: start discharging.')
-            self._energy_storage.energyStorageState = DischargingState(self._energy_storage, self.capacity,
-                                                                       self.max_power, self.current_capacity)
-            self._energy_storage.energyStorageState._set_power(power)
+        print('Charging state: start discharging.')
+        self._energy_storage.state = DischargingState(self._energy_storage, self.capacity, self.max_power, self.soc)
+        self._energy_storage.state._set_power(power)
+
+    def charge(self, power):
+        self._set_power(power)
 
     # turn off energy storage
     def turn_off(self):
-        self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.capacity, self.max_power,
-                                                            self.current_capacity)
-        print('Discharging state: energy storage turned off.')
+        self._energy_storage.state = IdleState(self._energy_storage, self.capacity, self.max_power, self.soc)
+        self._set_power(0)
+        print('Charging state: energy storage turned off.')
 
     # 1h elapsed
     def _update_soc(self):
-        self.current_capacity += self.power
-        if self.capacity <= self.current_capacity:
-            self.current_capacity = self.capacity
-            self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.capacity, self.max_power,
-                                                                self.current_capacity)
+        self.soc += self.power
+        if self.capacity <= self.soc:
+            self.soc = self.capacity
+            self._energy_storage.state = IdleState(self._energy_storage, self.capacity, self.max_power, self.soc)
             print('Charging state: Energy storage is full.')
         else:
-            print('Charging state: Energy storage is charging. Current capacity: ', self.current_capacity)
+            print('Charging state: Energy storage is charging. Current capacity: ', self.soc)
 
 
-class DischargingState(EnergyStorageState):
+class DischargingState(State):
 
     def state(self):
-        return State.DISCHARGING
+        return EnergyStorageState.DISCHARGING
 
     # command for discharge
     def charge(self, power):
-        if self.soc < self.capacity:
-            self._energy_storage.energyStorageState = ChargingState(self._energy_storage, self.capacity, self.max_power,
-                                                                    self.soc)
-            self._energy_storage.energyStorageState._set_power(power)
-            print('Discharging state: stat charging.')
+        self._energy_storage.state = ChargingState(self._energy_storage, self.capacity, self.max_power, self.soc)
+        self._energy_storage.state._set_power(power)
+        print('Discharging state: stat charging.')
+
+    def discharge(self, power):
+        self._set_power(power)
 
     # turn off energy storage
     def turn_off(self):
-        self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.capacity, self.max_power,
-                                                            self.soc)
+        self._energy_storage.state = IdleState(self._energy_storage, self.capacity, self.max_power, self.soc)
+        self._set_power(0)
         print('Discharging state: energy storage turned off.')
 
     # 1h elapsed
-    def _update_soc(self):
+    def update_soc(self):
         self.soc -= self.power
         if self.soc <= 0:
             self.soc = 0
-            self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.capacity, self.max_power,
-                                                                self.soc)
+            self._energy_storage.state = IdleState(self._energy_storage, self.capacity, self.max_power, self.soc)
             print('Discharging state: Energy storage is empty.')
         else:
             print('Discharging state: Energy storage is discharging. Current capacity: ', self.soc)
 
 
-class State(Enum):
+class EnergyStorageState(Enum):
     IDLE = 1
     CHARGING = 2
     DISCHARGING = 3
