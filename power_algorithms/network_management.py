@@ -2,6 +2,9 @@ import power_algorithms.network_definition as grid
 import pandapower as pp
 import pandas as pd
 
+from environment.energy_storage import EnergyStorage
+
+
 class NetworkManagement:
     def __init__(self):
          self.power_grid = grid.create_network()
@@ -65,3 +68,5 @@ class NetworkManagement:
 
     def print_cap_status(self):
         print(self.power_grid.switch)
+
+

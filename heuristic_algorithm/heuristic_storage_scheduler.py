@@ -1,4 +1,4 @@
-from heuristic_algorithm.network_model import NetworkModel
+from heuristic_algorithm.environment_heuristic import EnvironmentHeuristic
 
 
 def _get_storage_capacity_timeline(storage_actions_timeline: list):
@@ -22,12 +22,12 @@ def _get_storage_capacity_timeline(storage_actions_timeline: list):
 class HeuristicStorageScheduler(object):
 
     def __init__(self):
-        self._network_model = NetworkModel()
-        self._energy_storage = self._network_model.energy_storage
-        self._storage_power = self._network_model.energy_storage.energyStorageState.max_power
-        self._storage_capacity = self._network_model.energy_storage.energyStorageState.capacity
-        self._consumption = self._network_model.forecast.consumption.copy()
-        self._old_consumption = self._network_model.forecast.consumption.copy()
+        self._environment_heuristic = EnvironmentHeuristic()
+        self._energy_storage = self._environment_heuristic.energy_storage[0]
+        self._storage_power = self._energy_storage.energyStorageState.max_power
+        self._storage_capacity = self._energy_storage.energyStorageState.capacity
+        self._consumption = self._environment_heuristic.forecast.consumption.copy()
+        self._old_consumption = self._environment_heuristic.forecast.consumption.copy()
         self._storage_actions_timeline = [0] * len(self._consumption)
         self._storage_capacity_timeline = [0] * len(self._consumption)
         self._step = 0.1  # this is step (percent of nominal power) for gradient charge or discharge of energy storage
@@ -35,7 +35,7 @@ class HeuristicStorageScheduler(object):
     def start(self):
         self.calculate_storage_schedule()
         for timestamp in range(len(self._consumption)):
-            self._network_model.send_action(self._storage_actions_timeline[timestamp])
+            self._energy_storage.send_action(self._storage_actions_timeline[timestamp])
 
     def calculate_storage_schedule(self):
         charge = True
