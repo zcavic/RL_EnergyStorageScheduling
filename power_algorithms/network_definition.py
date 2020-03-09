@@ -24,7 +24,7 @@ def create_network():
         lowVoltageBusNodes.append(pp.create_bus(network, vn_kv=0.4, name="LowVoltageBus_" + str(i+1)))
 
     # Load in node 3
-    pp.create_load(network, bus=lowVoltageBusNodes[2], p_mw=3, q_mvar=1, name="Load_" + str(2+1))
+    pp.create_load(network, bus=lowVoltageBusNodes[2], p_mw=6, q_mvar=1, name="Load_" + str(2+1))
     pp.create_transformer(network, hv_bus=busNodes[2], lv_bus=lowVoltageBusNodes[2], std_type="SN/NN 1MVA", name="Transformer_" + str(2+1))
 
     # Solar generator in node 2

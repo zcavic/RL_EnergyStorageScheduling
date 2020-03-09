@@ -7,16 +7,16 @@ from environment.energy_storage import EnergyStorage
 
 class NetworkManagement:
     def __init__(self):
-         self.power_grid = grid.create_network()
+        self.power_grid = grid.create_network()
 
     def get_power_grid(self):
         return self.power_grid
-    
+
     # For given capacitor switch name (CapSwitch1, CapSwitch2...) status is changed.
     def change_capacitor_status(self, capSwitchName, closed):
         switchIndex = pp.get_element_index(self.power_grid, "switch", capSwitchName)
         self.power_grid.switch.closed.loc[switchIndex] = closed
-    
+
     def toogle_capacitor_status(self, capSwitchName):
         switchIndex = pp.get_element_index(self.power_grid, "switch", capSwitchName)
         currentState = self.power_grid.switch.closed.loc[switchIndex]
@@ -30,7 +30,8 @@ class NetworkManagement:
 
     def set_load_scaling(self, scaling_factors):
         if (len(scaling_factors) != len(self.power_grid.load.index)):
-            print("(ERROR) Input list of scaling factors {} is not the same length as number of loads {}".format(len(scaling_factors), len(self.power_grid.load.index)))
+            print("(ERROR) Input list of scaling factors {} is not the same length as number of loads {}".format(
+                len(scaling_factors), len(self.power_grid.load.index)))
             return
 
         for index, load in self.power_grid.load.iterrows():
@@ -38,7 +39,8 @@ class NetworkManagement:
 
     def set_generation_scaling(self, scaling_factors):
         if (len(scaling_factors) != len(self.power_grid.sgen.index)):
-            print("(ERROR) Input list of scaling factors {} is not the same length as number of generators {}".format(len(scaling_factors), len(self.power_grid.load.index)))
+            print("(ERROR) Input list of scaling factors {} is not the same length as number of generators {}".format(
+                len(scaling_factors), len(self.power_grid.load.index)))
             return
 
         for index, sgen in self.power_grid.sgen.iterrows():
@@ -50,9 +52,11 @@ class NetworkManagement:
     def set_capacitors_initial_status(self, capacitors_statuses):
         capacitor_indices = self.get_capacitor_indices_from_shunts()
         if (len(capacitors_statuses) != len(capacitor_indices)):
-            print("(ERROR) Input list of capacitor statuses {} is not the same length as number of capacitors {}".format(len(capacitors_statuses), len(self.power_grid.shunt.index)))
+            print(
+                "(ERROR) Input list of capacitor statuses {} is not the same length as number of capacitors {}".format(
+                    len(capacitors_statuses), len(self.power_grid.shunt.index)))
             return
-        
+
         capacitor_switches = self.power_grid.switch.index.tolist()
         input_status_index = 0
         for switch_index in capacitor_switches:
@@ -68,5 +72,3 @@ class NetworkManagement:
 
     def print_cap_status(self):
         print(self.power_grid.switch)
-
-
