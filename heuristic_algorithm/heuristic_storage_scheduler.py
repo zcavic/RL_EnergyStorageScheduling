@@ -14,6 +14,7 @@ class HeuristicStorageScheduler(object):
         schedule_data_collection = dict()
         for energy_storage in self._energy_storage_collection:
             schedule_data_collection[energy_storage.id] = self.calculate_storage_schedule(energy_storage)
+            print(schedule_data_collection[energy_storage.id].action_timeline)
             for timestamp in range(len(self.demand_forecast)):
                 energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[timestamp])
 
