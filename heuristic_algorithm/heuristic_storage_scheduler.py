@@ -8,6 +8,7 @@ class HeuristicStorageScheduler(object):
     def __init__(self, environment_heuristic: EnvironmentHeuristic):
         self._energy_storage_collection = environment_heuristic.energy_storage_collection
         self.demand_forecast = environment_heuristic.demand_forecast
+        self.environment_heuristic = environment_heuristic
         self._step = 0.1  # this is step (percent of nominal power) for gradient charge or discharge of energy storage
 
     def start(self):
@@ -16,7 +17,10 @@ class HeuristicStorageScheduler(object):
             schedule_data_collection[energy_storage.id] = self.calculate_storage_schedule(energy_storage)
             print(schedule_data_collection[energy_storage.id].action_timeline)
             for timestamp in range(len(self.demand_forecast)):
+                self.environment_heuristic.set_scaling(timestamp)
                 energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[timestamp])
+            self.environment_heuristic.set_scaling(0)
+            energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[0])
 
     def calculate_storage_schedule(self, energy_storage):
         schedule_data = ScheduleData([0] * len(self.demand_forecast), [0] * len(self.demand_forecast),
