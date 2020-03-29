@@ -45,14 +45,22 @@ def get_scaling_from_row(row):
     load_percents = row[load_columnes].values.tolist() 
     return solar_percents, load_percents
 
-def plot_daily_results(day_id, solar_powers, load_powers, storage_powers):
+def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs):
     time = [i for i in range(24)]
 
-    plt.plot(time, solar_powers, label='Solar', color='g')
-    plt.plot(time, load_powers, label='Load', color='r')
-    plt.plot(time, storage_powers, label='Storage', color='k')
-    plt.xlabel('Time') 
-    plt.ylabel('Active power') 
-    plt.legend(loc='upper right')
-    plt.savefig(str(day_id) + '_day_resuts.png')
+    fig, (ax0, ax1) = plt.subplots(2, 1, sharex=True)
+
+    ax0.set_title('Powers')
+    ax0.plot(time, solar_powers, label='Solar', color='g')
+    ax0.plot(time, load_powers, label='Load', color='r')
+    ax0.plot(time, proposed_storage_powers, label='Storage proposed', color='k')
+    ax0.plot(time, actual_storage_powers, label='Storage actual', color='b')
+    ax0.legend(loc='upper right')
+
+    ax1.set_title('State of charge')
+    ax1.plot(time, storage_socs, label='Storage soc', color='b')
+    ax1.legend(loc='upper right')
+
+
+    fig.savefig(str(day_id) + '_day_resuts.png')
     plt.show()

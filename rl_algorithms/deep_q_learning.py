@@ -102,8 +102,8 @@ class DeepQLearningAgent:
         #self.policy_net.load_state_dict(torch.load("policy_net"))
         total_episode_rewards = []
         for i_episode in range(n_episodes):
-            if (i_episode % 1 == 0):
-                print("==============================Episode: ", i_episode)
+            if (i_episode % 50 == 0):
+                print("=============Episode: ", i_episode)
             #if (i_episode == int(0.05 * n_episodes)):
                 #self.epsilon = 0.1
 
@@ -126,7 +126,7 @@ class DeepQLearningAgent:
                     next_solar_percents, next_load_percents = get_scaling_from_row(row)
                 #else neka percents zadrze stare vrijednosti, necemo ih ni koristiti
 
-                next_state, reward, done = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                next_state, reward, done, _, _ = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
                 total_episode_reward += reward
                 reward = torch.tensor([reward], dtype=torch.float)
                 action = torch.tensor([action], dtype=torch.float)
@@ -181,7 +181,9 @@ class DeepQLearningAgent:
             #todo neka ove promjenljive budu ukupne snage u mrezi u aps. jedinicama
             solar_powers = []
             load_powers = []
-            storage_powers = []
+            proposed_storage_powers = []
+            actual_storage_powers = []
+            storage_socs = []
 
             #inicijalni red iz dataframe sluzi za inicijalizaciju, on se u okviru predstojece petlje preskace
             first_row = df_test_day.iloc[0]
@@ -191,7 +193,7 @@ class DeepQLearningAgent:
 
             for next_timestep_idx in range(1, len(df_test_day)+1):
                 action = self.get_action(state, epsilon = 0.0)
-                storage_powers.append(action)
+                proposed_storage_powers.append(action)
                 if abs(action) > 1.0:
                     print('Warning: deep_q_learning.train - abs(action) > 1')
                 if (next_timestep_idx < len(df_test_day)):
@@ -200,13 +202,15 @@ class DeepQLearningAgent:
                     solar_powers.append(next_solar_percents[0] * -1)
                     load_powers.append(next_load_percents[0])
 
-                next_state, reward, done = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                next_state, reward, done, actual_action, initial_soc = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                actual_storage_powers.append(actual_action)
+                storage_socs.append(initial_soc)
                 total_episode_reward += reward
                 print('action', action)
                 print(state)
                 state = torch.tensor([next_state], dtype=torch.float)
             print('total_episode_reward', total_episode_reward)
-            plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, storage_powers)
+            plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs)
 
     def optimize_model(self):
         if len(self.memory) < self.batch_size:

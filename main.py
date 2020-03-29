@@ -12,9 +12,9 @@ def main():
     df = load_dataset()
     df_train, df_test = split_dataset(df, 71)
 
-    print('==============Heuristic algorithm==============')
-    heuristic_algorithm = HeuristicStorageScheduler()
-    heuristic_algorithm.start()
+    #print('==============Heuristic algorithm==============')
+    #heuristic_algorithm = HeuristicStorageScheduler()
+    #heuristic_algorithm.start()
 
     #network_manager = nm.NetworkManagement()
     #power_flow = PowerFlow(network_manager)

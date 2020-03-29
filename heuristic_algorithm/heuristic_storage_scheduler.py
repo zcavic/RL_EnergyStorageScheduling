@@ -18,9 +18,9 @@ class HeuristicStorageScheduler(object):
             print(schedule_data_collection[energy_storage.id].action_timeline)
             for timestamp in range(len(self.demand_forecast)):
                 self.environment_heuristic.set_scaling(timestamp)
-                energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[timestamp])
+                _ = energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[timestamp])
             self.environment_heuristic.set_scaling(0)
-            energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[0])
+            _ = energy_storage.send_action(schedule_data_collection[energy_storage.id].action_timeline[0])
 
     def calculate_storage_schedule(self, energy_storage):
         schedule_data = ScheduleData([0] * len(self.demand_forecast), [0] * len(self.demand_forecast),
