@@ -102,8 +102,8 @@ class DeepQLearningAgent:
         #self.policy_net.load_state_dict(torch.load("policy_net"))
         total_episode_rewards = []
         for i_episode in range(n_episodes):
-            if (i_episode % 50 == 0):
-                print("=========Episode: ", i_episode)
+            if (i_episode % 1 == 0):
+                print("==============================Episode: ", i_episode)
             #if (i_episode == int(0.05 * n_episodes)):
                 #self.epsilon = 0.1
 

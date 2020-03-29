@@ -6,6 +6,7 @@ from power_algorithms.power_flow import PowerFlow
 import power_algorithms.network_management as nm
 from gym.spaces import Tuple
 from gym.spaces.space import Space
+from environment.energy_storage import EnergyStorage
 
 #Custom space
 class Incremental(Space):
@@ -53,6 +54,10 @@ class EnvironmentDiscrete(gym.Env):
         self.action_space = Incremental(self.low_set_point, self.high_set_point, 0.1)
         self.n_actions = self.action_space.size
 
+        #todo neka ovo bude lista ili nesto...?
+        index = 0 #ili 1, provjeri?
+        self.energy_storage = EnergyStorage(index, self.network_manager.power_grid, self.power_flow)
+
     def _update_state(self):
         self.state = []
         self.power_flow.calculate_power_flow()
@@ -68,6 +73,7 @@ class EnvironmentDiscrete(gym.Env):
         return self.state
 
     def step(self, action, solar_percents, load_percents):
+        self.energy_storage.send_action(action)
         self.network_manager.set_storage_scaling(action, self.agent_index)
 
         self.network_manager.set_generation_scaling(solar_percents)
