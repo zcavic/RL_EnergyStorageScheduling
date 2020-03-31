@@ -161,7 +161,7 @@ class DeepQLearningAgent:
             total_episode_rewards.append(total_episode_reward)
             
             if (i_episode % 300 == 299):
-                torch.save(self.policy_net.state_dict(), "policy_net")
+                torch.save(self.policy_net.state_dict(), "./trained_nets/policy_net" + str(i_episode))
                 time.sleep(60)
 
             if i_episode % self.target_update == 0:
@@ -235,9 +235,9 @@ class DeepQLearningAgent:
 
             total_episode_rewards.append(total_episode_reward)
             
-            if (i_episode % 300 == 299):
-                torch.save(self.swa_net.state_dict(), "policy_net")
-                time.sleep(60)
+            if (i_episode % 12 == 0):
+                torch.save(self.policy_net.state_dict(), "./trained_nets/policy_net" + str(i_episode))
+                #time.sleep(60)
 
             if i_episode % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -245,7 +245,8 @@ class DeepQLearningAgent:
             if (i_episode % self.weight_averaging_period == 0 and i_episode > 0):
                 for swa_param, param in zip(self.swa_net.parameters(), self.policy_net.parameters()):
                     swa_param.data.copy_( (swa_param.data*self.n_swa + param.data*1.0) / (1.0 * (self.n_swa + 1)))
-                    self.n_swa += 1
+                self.n_swa += 1
+                torch.save(self.swa_net.state_dict(), "./trained_nets/swa_net" + str(i_episode))
 
         torch.save(self.swa_net.state_dict(), "policy_net")
 
