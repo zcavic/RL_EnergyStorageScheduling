@@ -9,7 +9,7 @@ class EnergyStorage:
         self.power_flow = power_flow
         self.max_p_kw = self.power_grid.storage.p_mw.loc[index]
         self.max_e_mwh = self.power_grid.storage.max_e_mwh.loc[index] #1000000.0
-        initial_soc = 10000.0
+        initial_soc = 0.0
         self.energyStorageState = IdleState(self, self.max_e_mwh, self.max_p_kw, initial_soc)
 
     def state(self):
@@ -21,21 +21,25 @@ class EnergyStorage:
     def send_action(self, action):
         actual_action = action
         #print('Storage is in', self.state(), 'and action', action, 'will be executed.')
-        self.energyStorageState.update_soc()
-        if action < -self.energyStorageState.soc or \
-                action > (self.energyStorageState.capacity - self.energyStorageState.soc):
+        cant_execute = False
+        eps = 0.01
+        if action - eps < -self.energyStorageState.soc or \
+                action + eps > (self.energyStorageState.capacity - self.energyStorageState.soc):
             self.energyStorageState.turn_off()
             actual_action = 0
+            cant_execute = True
         if action < 0:
             self.energyStorageState.discharge(action)
         elif action > 0:
             self.energyStorageState.charge(action)
         else:
             self.energyStorageState.turn_off()
+
+        self.energyStorageState.update_soc()
         self.power_grid.storage.scaling.loc[self.id] = self.energyStorageState.power / self.max_p_kw
         self.power_flow.calculate_power_flow()
 
-        return actual_action
+        return actual_action, cant_execute
 
 
 class EnergyStorageState:

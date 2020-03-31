@@ -39,11 +39,11 @@ class ReplayMemory(object):
 class DQN(nn.Module):
     def __init__(self, input_size, output_size):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(input_size, 30)
-        self.fc2 = nn.Linear(30, 30)
-        self.fc3 = nn.Linear(30, 30)
-        self.fc3_bn = nn.BatchNorm1d(30)
-        self.fc4 = nn.Linear(30, output_size)
+        self.fc1 = nn.Linear(input_size, 100)
+        self.fc2 = nn.Linear(100, 100)
+        self.fc3 = nn.Linear(100, 100)
+        self.fc3_bn = nn.BatchNorm1d(100)
+        self.fc4 = nn.Linear(100, output_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -57,9 +57,9 @@ class DeepQLearningAgent:
     def __init__(self, environment):
         self.environment = environment
         self.epsilon = 0.2
-        self.batch_size = 64
-        self.gamma = 0.9
-        self.target_update = 10
+        self.batch_size = 128
+        self.gamma = 1.0
+        self.target_update = 4
         self.memory = ReplayMemory(1000000)
 
         self.state_space_dims = environment.state_space_dims
@@ -76,21 +76,31 @@ class DeepQLearningAgent:
         #self.optimizer = optim.RMSprop(self.policy_net.parameters())
 
     #return set point on the energy storage
+
     def get_action(self, state, epsilon):
+        #print('Available actions:')
+        #print(self.environment.available_actions)
         if random.random() > epsilon:
             self.policy_net.eval()
             with torch.no_grad():
-                # t.max(1) will return largest column value of each row.
-                # second column on max result is index of where max element was
-                # found, so we pick action with the larger expected reward.
-                action_index = self.policy_net(state).max(1)[1].view(1, 1)
+                #self.policy_net(state).sort(-1, descending = True)[1] daje indekse akcija sortiranih po njihovim q vrijednostima
+                sorted_actions = self.policy_net(state).sort(-1, descending = True)[1].tolist()[0]
+                #print('Sorted actions:')
+                #print (sorted_actions)
+                for action_candidate_id in sorted_actions:
+                    if (len(self.environment.available_actions) == 0):
+                        print('Agent -> get_action: No avaliable actions')
+                    if action_candidate_id in self.environment.available_actions.keys():
+                        action_id = action_candidate_id
+                        break
+                #action = self.policy_net(state).max(1)[1].view(1, 1)
                 self.policy_net.train()
-                #return torch.tensor([[self.actions[action_index]]])
-                return self.actions[action_index]
-
+                #print('Best action: ', action)
+                return self.environment.available_actions[action_id]
         else:
-            #return torch.tensor([[self.actions[random.randint(0, len(self.actions)-1)]]], dtype=torch.float)   
-            return self.actions[random.randint(0, len(self.actions)-1)] 
+            action_id = random.choice(list(self.environment.available_actions.keys()))
+            #print('Random action: ', action)
+            return self.environment.available_actions[action_id]
 
     def environment_reset(self, df_day):
         first_row = df_day.iloc[0]
@@ -101,11 +111,14 @@ class DeepQLearningAgent:
     def train(self, df_train, n_episodes):
         #self.policy_net.load_state_dict(torch.load("policy_net"))
         total_episode_rewards = []
+        self.epsilon = 0.99
         for i_episode in range(n_episodes):
             if (i_episode % 50 == 0):
                 print("=============Episode: ", i_episode)
-            #if (i_episode == int(0.05 * n_episodes)):
-                #self.epsilon = 0.1
+            if (i_episode == int(0.2 * n_episodes)):
+                self.epsilon = 0.4
+            if (i_episode == int(0.5 * n_episodes)):
+                self.epsilon = 0.2
 
             done = False
 
@@ -147,14 +160,94 @@ class DeepQLearningAgent:
 
             total_episode_rewards.append(total_episode_reward)
             
-            if (i_episode % 200 == 199):
+            if (i_episode % 300 == 299):
                 torch.save(self.policy_net.state_dict(), "policy_net")
-                time.sleep(3)
+                time.sleep(60)
 
             if i_episode % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
 
         torch.save(self.policy_net.state_dict(), "policy_net")
+
+        x_axis = [1 + j for j in range(len(total_episode_rewards))]
+        plt.plot(x_axis, total_episode_rewards)
+        plt.xlabel('Episode number') 
+        plt.ylabel('Total episode reward') 
+        plt.savefig("total_episode_rewards.png")
+        plt.show()
+
+    #SWA algoritam iz rada: Improving Stability in Deep Reinforcement Learning with Weight Averaging
+    def train_with_weight_averaging(self, df_train, n_episodes):
+        self.policy_net.load_state_dict(torch.load("./pretrained_weights/policy_net"))
+
+        self.weight_averaging_period = 12
+        self.n_swa = 1
+        self.swa_net = DQN(self.state_space_dims, self.n_actions)
+        self.swa_net.load_state_dict(self.policy_net.state_dict())
+
+        total_episode_rewards = []
+        self.epsilon = 0.6
+        for i_episode in range(n_episodes):
+            if (i_episode % 50 == 0):
+                print("=============Episode: ", i_episode)
+            if (i_episode == int(0.2 * n_episodes)):
+                self.epsilon = 0.4
+            if (i_episode == int(0.5 * n_episodes)):
+                self.epsilon = 0.2
+
+            done = False
+
+            df_train_day = select_random_day(df_train)
+            state = self.environment_reset(df_train_day)
+            state = torch.tensor([state], dtype=torch.float)
+            total_episode_reward = 0
+
+            #prvi red (i = 0) je gore sluzio za inicijalno stanje
+            #trenutni red se koristi da se dobave scaling vrijednosti za sljedeci timestep
+            #za i = len(df_train_day) ce next_state biti None, done = True, ali i tada hocemo da odradimo environment.step
+            for next_timestep_idx in range(1, len(df_train_day)+1):
+                action = self.get_action(state, self.epsilon)
+                if abs(action) > 1.0:
+                    print('Warning: deep_q_learning.train - abs(action) > 1')
+                if (next_timestep_idx < len(df_train_day)):
+                    row = df_train_day.iloc[next_timestep_idx]
+                    next_solar_percents, next_load_percents = get_scaling_from_row(row)
+                #else neka percents zadrze stare vrijednosti, necemo ih ni koristiti
+
+                next_state, reward, done, _, _ = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                total_episode_reward += reward
+                reward = torch.tensor([reward], dtype=torch.float)
+                action = torch.tensor([action], dtype=torch.float)
+                next_state = torch.tensor([next_state], dtype=torch.float)
+                if done:
+                    next_state = None
+
+                self.memory.push(state, action, next_state, reward)
+                state = next_state
+                self.optimize_model()
+
+                #dodaj provjeru da li je self.environment.timestamp != index%24 + 1
+                if (next_timestep_idx != self.environment.timestep):
+                    print('Warning: deep_q_learning.train - something may be wrong with timestep indexing')
+
+            if (i_episode % 50 == 0):
+                print ("total_episode_reward: ", total_episode_reward)
+
+            total_episode_rewards.append(total_episode_reward)
+            
+            if (i_episode % 300 == 299):
+                torch.save(self.swa_net.state_dict(), "policy_net")
+                time.sleep(60)
+
+            if i_episode % self.target_update == 0:
+                self.target_net.load_state_dict(self.policy_net.state_dict())
+
+            if (i_episode % self.weight_averaging_period == 0 and i_episode > 0):
+                for swa_param, param in zip(self.swa_net.parameters(), self.policy_net.parameters()):
+                    swa_param.data.copy_( (swa_param.data*self.n_swa + param.data*1.0) / (1.0 * (self.n_swa + 1)))
+                    self.n_swa += 1
+
+        torch.save(self.swa_net.state_dict(), "policy_net")
 
         x_axis = [1 + j for j in range(len(total_episode_rewards))]
         plt.plot(x_axis, total_episode_rewards)
@@ -208,6 +301,7 @@ class DeepQLearningAgent:
                 total_episode_reward += reward
                 print('action', action)
                 print(state)
+                print('==================================================')
                 state = torch.tensor([next_state], dtype=torch.float)
             print('total_episode_reward', total_episode_reward)
             plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs)

@@ -35,6 +35,7 @@ class EnvironmentDiscrete(gym.Env):
         self.network_manager = nm.NetworkManagement()
         self.power_flow = PowerFlow(self.network_manager)
         self.power_flow.calculate_power_flow() #potrebno zbog odredjivanja state_space_dims
+        self.startng_loss = self.power_flow.get_losses() #zbog calculate reward
 
         #p i q po granama je dovoljno da agent moze da napravi internu reprezentaciju gubitakam injektiranih snaga u cvorove
         # i snage koja se uzima iz prenosne mreze
@@ -43,6 +44,7 @@ class EnvironmentDiscrete(gym.Env):
         self.state.append(self.timestep * 1.0)
         self.state += list(line_p_dict.values())
         self.state += list(line_q_dict.values())
+        self.state.append(0.0) #state of charge, prava vrijednost se postavlja ispod...
 
         self.state_space_dims = len(self.state)
         
@@ -54,9 +56,6 @@ class EnvironmentDiscrete(gym.Env):
         self.action_space = Incremental(self.low_set_point, self.high_set_point, 0.1)
         self.n_actions = self.action_space.size
 
-        #todo neka ovo bude lista ili nesto...?
-        index = 0 #ili 1, provjeri?
-        self.energy_storage = EnergyStorage(index, self.network_manager.power_grid, self.power_flow)
 
     def _update_state(self):
         self.state = []
@@ -67,30 +66,52 @@ class EnvironmentDiscrete(gym.Env):
         self.state.append(self.timestep * 1.0)
         self.state += list(line_p_dict.values())
         self.state += list(line_q_dict.values())
+        self.state.append(self.energy_storage.energyStorageState.soc)
 
         if self.state_space_dims != len(self.state):
             print("Warning: environment_distrete -> _update_state - wrong state size")
         return self.state
 
+    def _update_available_actions(self):
+        self.action_indices = [i for i in range(self.n_actions)]
+        self.available_action_values = self.action_space.values.tolist()
+        self.available_actions = dict(zip(self.action_indices, self.available_action_values))
+        eps = 0.01
+
+        for action_id in self.action_indices:
+            action = self.available_actions[action_id]
+            if action - eps <= -self.energy_storage.energyStorageState.soc or \
+                    action + eps >= (self.energy_storage.energyStorageState.capacity - self.energy_storage.energyStorageState.soc):
+                self.available_actions.pop(action_id)
+
     def step(self, action, solar_percents, load_percents):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action = self.energy_storage.send_action(action)
+        actual_action, cant_execute = self.energy_storage.send_action(action)
         #self.network_manager.set_storage_scaling(action, self.agent_index)
 
         self.network_manager.set_generation_scaling(solar_percents)
         self.network_manager.set_load_scaling(load_percents)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(action)
+        reward = self.calculate_reward(action, cant_execute)
         done = self.timestep == 24
+        self._update_available_actions()
         return next_state, reward, done, actual_action, initial_soc
 
 
-    def calculate_reward(self, action):
+    def calculate_reward(self, action, cant_execute):
         #za sada q ne razmatramo jer storage salje akcije samo po p
         #q idalje stoji u stanju, ako htjednemo da ukljucimo losses ovdje
         #ako je network_injected_p negativno, onda ce agent pokusavati da ga poveca - da poveca prodaju u prenosnu mrezu, to je ok
-        return -1 * self.power_flow.get_network_injected_p().values[0]
+        #return -1 * self.power_flow.get_network_injected_p().values[0]
+        
+        #reward =  -0.1 * (self.power_flow.get_losses() - self.startng_loss)
+        if self.timestep >= 7 and self.timestep < 15:
+            reward = - 0.2 * action
+        else:
+            reward = 0
+            
+        return reward
 
     def reset(self, solar_percents, load_percents):
         self.timestep = 0
@@ -98,6 +119,10 @@ class EnvironmentDiscrete(gym.Env):
 
         self.network_manager.set_generation_scaling(solar_percents)
         self.network_manager.set_load_scaling(load_percents)
+        
+        #todo neka ovo bude lista ili nesto...?
+        index = 0 #ili 1, provjeri?
+        self.energy_storage = EnergyStorage(index, self.network_manager.power_grid, self.power_flow)
 
         self.state = []
         self.power_flow.calculate_power_flow()
@@ -106,5 +131,8 @@ class EnvironmentDiscrete(gym.Env):
         self.state.append(self.timestep * 1.0)
         self.state += list(line_p_dict.values())
         self.state += list(line_q_dict.values())
+        self.state.append(self.energy_storage.energyStorageState.soc) #todo ovo kasnije mora biti lista a ne jedan soc
+
+        self._update_available_actions()
 
         return self.state

@@ -31,10 +31,10 @@ def create_network():
     # sgen -> static generator (PQ, not PV)
     pp.create_sgen(network, bus=busNodes[1], p_mw=6, q_mvar=1, name="Gen_" + str(2+1))
 
-    # Storage in node 1
+    # Storage in node 3
     # p > 0 - charging
     # p < 0 - discharging
-    pp.create_storage(network, bus=busNodes[0], p_mw = 3, max_e_mwh = 1000000, soc_percent = 0.5, min_e_mwh = 0)
+    pp.create_storage(network, bus=busNodes[2], p_mw = 6, max_e_mwh = 1000000, soc_percent = 0.5, min_e_mwh = 0)
 
     # Lines
     pp.create_line(network, from_bus=mediumVoltageBusNode, to_bus=busNodes[0], length_km=0.5, name="Line_0", std_type="NA2XS2Y 1x150 RM/25 12/20 kV")
