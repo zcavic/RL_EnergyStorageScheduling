@@ -51,10 +51,10 @@ def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_power
     fig, (ax0, ax1) = plt.subplots(2, 1, sharex=True)
 
     ax0.set_title('Powers')
-    ax0.plot(time, solar_powers, label='Solar', color='g')
-    ax0.plot(time, load_powers, label='Load', color='r')
-    ax0.plot(time, proposed_storage_powers, label='Storage proposed', color='k')
-    ax0.plot(time, actual_storage_powers, label='Storage actual', color='b')
+    ax0.step(time, solar_powers, label='Solar', color='g')
+    ax0.step(time, load_powers, label='Load', color='r')
+    ax0.step(time, proposed_storage_powers, label='Storage proposed', color='k')
+    ax0.step(time, actual_storage_powers, label='Storage actual', color='b')
     ax0.legend(loc='upper right')
 
     ax1.set_title('State of charge')
