@@ -178,7 +178,7 @@ class DeepQLearningAgent:
 
     #SWA algoritam iz rada: Improving Stability in Deep Reinforcement Learning with Weight Averaging
     def train_with_weight_averaging(self, df_train, n_episodes):
-        self.policy_net.load_state_dict(torch.load("./pretrained_weights/policy_net"))
+        #self.policy_net.load_state_dict(torch.load("./pretrained_weights/policy_net"))
 
         self.weight_averaging_period = 12
         self.n_swa = 1
@@ -186,7 +186,7 @@ class DeepQLearningAgent:
         self.swa_net.load_state_dict(self.policy_net.state_dict())
 
         total_episode_rewards = []
-        self.epsilon = 0.6
+        self.epsilon = 0.99
         for i_episode in range(n_episodes):
             if (i_episode % 50 == 0):
                 print("=============Episode: ", i_episode)

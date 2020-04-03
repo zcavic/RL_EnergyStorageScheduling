@@ -6,6 +6,7 @@ from power_algorithms.power_flow import PowerFlow
 import power_algorithms.network_management as nm
 from gym.spaces import Tuple
 from gym.spaces.space import Space
+from environment.energy_storage import EnergyStorage
 
 #Custom space
 class Incremental(Space):
@@ -45,6 +46,7 @@ class EnvironmentContinous(gym.Env):
         self.base_power = 6.0
         self.state += [val / self.base_power for val in list(line_p_dict.values())] # moze ovo elegantnije
         self.state += [val / self.base_power for val in list(line_q_dict.values())]
+        self.state.append(0.0) #state of charge, prava vrijednost se postavlja ispod...
 
         self.state_space_dims = len(self.state)
         self.action_space_dims = 1 #todo iz pandapowera dobavi broj energy storage-a umjesto hardkodovanja
@@ -68,35 +70,50 @@ class EnvironmentContinous(gym.Env):
         self.state.append(self.timestep / 25.0)
         self.state += [val / self.base_power for val in list(line_p_dict.values())]
         self.state += [val / self.base_power for val in list(line_q_dict.values())]
+        self.state.append(self.energy_storage.energyStorageState.soc)
 
         if self.state_space_dims != len(self.state):
-            print("Warning: environment_distrete -> _update_state - wrong state size")
+            print("Warning: environment_continous -> _update_state - wrong state size")
         return self.state
 
     def step(self, action, solar_percents, load_percents):
-        self.network_manager.set_storage_scaling(action, self.agent_index)
+        initial_soc = self.energy_storage.energyStorageState.soc
+        actual_action, cant_execute = self.energy_storage.send_action(action)
+        #self.network_manager.set_storage_scaling(action, self.agent_index)
 
         self.network_manager.set_generation_scaling(solar_percents)
         self.network_manager.set_load_scaling(load_percents)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(action)
+        reward = self.calculate_reward(action, actual_action, cant_execute)
         done = self.timestep == 24
-        return next_state, reward, done
+        return next_state, reward, done, actual_action, initial_soc
 
 
-    def calculate_reward(self, action):
+    def calculate_reward(self, action, actual_action, cant_execute):
         #za sada q ne razmatramo jer storage salje akcije samo po p
         #q idalje stoji u stanju, ako htjednemo da ukljucimo losses ovdje
         #ako je network_injected_p negativno, onda ce agent pokusavati da ga poveca - da poveca prodaju u prenosnu mrezu, to je ok
-        return -0.025 * self.power_flow.get_network_injected_p().values[0]
+        #return -1 * self.power_flow.get_network_injected_p().values[0]
+        
+        #reward =  -0.1 * (self.power_flow.get_losses() - self.startng_loss)
+        if self.timestep >= 7 and self.timestep < 15:
+            reward = - 0.2 * actual_action
+        else:
+            reward = 0
+            
+        return reward
 
     def reset(self, solar_percents, load_percents):
         self.timestep = 0
-        self.network_manager.set_storage_scaling(0.0, self.agent_index)
+        self.network_manager.set_storage_scaling(1.0, self.agent_index)
 
         self.network_manager.set_generation_scaling(solar_percents)
         self.network_manager.set_load_scaling(load_percents)
+
+        #todo neka ovo bude lista ili nesto...?
+        index = 0 #ili 1, provjeri?
+        self.energy_storage = EnergyStorage(index, self.network_manager.power_grid, self.power_flow)
 
         self.state = []
         self.power_flow.calculate_power_flow()
@@ -105,5 +122,6 @@ class EnvironmentContinous(gym.Env):
         self.state.append(self.timestep / 25.0)
         self.state += [val / self.base_power for val in list(line_p_dict.values())]
         self.state += [val / self.base_power for val in list(line_q_dict.values())]
+        self.state.append(self.energy_storage.energyStorageState.soc)
 
         return self.state

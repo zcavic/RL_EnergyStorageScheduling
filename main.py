@@ -1,4 +1,4 @@
-#from environment.environment_continous import EnvironmentContinous
+from environment.environment_continous import EnvironmentContinous
 from environment.environment_discrete import EnvironmentDiscrete
 from heuristic_algorithm.heuristic_storage_scheduler import HeuristicStorageScheduler
 from rl_algorithms.ddpg import DDPGAgent
@@ -21,17 +21,17 @@ def main():
     #power_flow.create_data_set()
 
     #environment should'n have the entire dataset as an input parameter, but train and test methods
-    environment_discrete = EnvironmentDiscrete()
-    #environment_continous = EnvironmentContinous()
+    #environment_discrete = EnvironmentDiscrete()
+    environment_continous = EnvironmentContinous()
 
     print('=====================agent=====================')
-    agent = DeepQLearningAgent(environment_discrete)
-    #agent = DDPGAgent(environment_continous)
+    #agent = DeepQLearningAgent(environment_discrete)
+    agent = DDPGAgent(environment_continous)
 
-    n_episodes = 750
+    n_episodes = 30000
     print('agent training started')
     t1 = time.time()
-    agent.train_with_weight_averaging(df_train, n_episodes)
+    #agent.train(df_train, n_episodes)
     t2 = time.time()
     print ('agent training finished in', t2-t1)
 

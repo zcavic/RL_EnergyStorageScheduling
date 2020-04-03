@@ -50,7 +50,7 @@ class Actor(nn.Module):
         return x
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.05, min_sigma=0.05, decay_period=100):
+    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.5, min_sigma=0.5, decay_period=100):
         self.mu           = mu
         self.theta        = theta
         self.sigma        = max_sigma
@@ -130,7 +130,7 @@ class ReplayBuffer:
         return len(self.buffer)
 
 class DDPGAgent:
-    def __init__(self, environment, hidden_size=100, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0, tau=1e-3, max_memory_size=600000):
+    def __init__(self, environment, hidden_size=128, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0, tau=1e-3, max_memory_size=600000):
         self.environment = environment
         self.num_states = environment.state_space_dims
         self.num_actions = environment.action_space_dims
@@ -219,8 +219,12 @@ class DDPGAgent:
         #self.critic.load_state_dict(torch.load("model_critic"))
         total_episode_rewards = []
         for i_episode in range(n_episodes):
-            if (i_episode % 100 == 0):
+            if (i_episode % 20 == 0):
                 print("Episode: ", i_episode)
+                
+            if (i_episode == 10000):
+                self.noise.min_sigma = 0.2
+                self.noise.max_sigma = 0.2
 
             df_train_day = select_random_day(df_train)
             state = self.environment_reset(df_train_day)
@@ -245,7 +249,7 @@ class DDPGAgent:
                     row = df_train_day.iloc[next_timestep_idx]
                     next_solar_percents, next_load_percents = get_scaling_from_row(row)
 
-                next_state, reward, done = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                next_state, reward, done, _, _ = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
                 total_episode_reward += reward
                 self.timestep += 1
                 
@@ -260,15 +264,15 @@ class DDPGAgent:
 
             total_episode_rewards.append(total_episode_reward)
             
-            if (i_episode % 100 == 0):
+            if (i_episode % 20 == 0):
                 print ("total_episode_reward: ", total_episode_reward)
             
-            if (i_episode % 500 == 499):
+            if (i_episode % 1000 == 999):
                 time.sleep(60)
 
-            if (i_episode % 10 == 0):
-                torch.save(self.actor.state_dict(), "model_actor")
-                torch.save(self.critic.state_dict(), "model_critic")                
+            if (i_episode % 20 == 0):
+                torch.save(self.actor.state_dict(), "./trained_nets/model_actor"+str(i_episode))
+                #torch.save(self.critic.state_dict(), "./trained_nets/model_critic"+str(i_episode))                
         
         torch.save(self.actor.state_dict(), "model_actor")
         torch.save(self.critic.state_dict(), "model_critic")
@@ -296,7 +300,9 @@ class DDPGAgent:
             #todo neka ove promjenljive budu ukupne snage u mrezi u aps. jedinicama
             solar_powers = []
             load_powers = []
-            storage_powers = []
+            proposed_storage_powers = []
+            actual_storage_powers = []
+            storage_socs = []
 
             #inicijalni red iz dataframe sluzi za inicijalizaciju, on se u okviru predstojece petlje preskace
             first_row = df_test_day.iloc[0]
@@ -307,7 +313,7 @@ class DDPGAgent:
             for next_timestep_idx in range(1, len(df_test_day)+1):
                 state = np.asarray(state)
                 action = self.get_action(state)
-                storage_powers.append(action)
+                proposed_storage_powers.append(action)
                 if abs(action) > 1.0:
                     print('Warning: deep_q_learning.train - abs(action) > 1')
                 if (next_timestep_idx < len(df_test_day)):
@@ -316,10 +322,12 @@ class DDPGAgent:
                     solar_powers.append(next_solar_percents[0] * -1)
                     load_powers.append(next_load_percents[0])
 
-                next_state, reward, done = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
-                total_episode_reward += reward
+                next_state, reward, done, actual_action, initial_soc = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                
+                actual_storage_powers.append(actual_action)
+                storage_socs.append(initial_soc)
 
                 total_episode_reward += reward
                 state = next_state
         print('total_episode_reward', total_episode_reward)
-        plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, storage_powers)
+        plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs)

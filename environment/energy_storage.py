@@ -19,7 +19,7 @@ class EnergyStorage:
         return self.energyStorageState.power
 
     def send_action(self, action):
-        actual_action = action
+        actual_action = action[0]
         #print('Storage is in', self.state(), 'and action', action, 'will be executed.')
         cant_execute = False
         eps = 0.01
@@ -125,7 +125,7 @@ class ChargingState(EnergyStorageState):
 
     # 1h elapsed
     def update_soc(self):
-        self.soc += self.power
+        self.soc += self.power[0]
         if self.soc >= self.capacity:
             self.soc = self.capacity
             self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.capacity, self.max_power,
@@ -163,7 +163,7 @@ class DischargingState(EnergyStorageState):
 
     # 1h elapsed
     def update_soc(self):
-        self.soc += self.power
+        self.soc += self.power[0]
         if self.soc <= 0:
             self.soc = 0
             self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.capacity, self.max_power,

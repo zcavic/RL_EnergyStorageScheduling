@@ -41,9 +41,11 @@ class EnvironmentDiscrete(gym.Env):
         # i snage koja se uzima iz prenosne mreze
         line_p_dict = self.power_flow.get_lines_active_power()
         line_q_dict = self.power_flow.get_lines_reactive_power()
-        self.state.append(self.timestep * 1.0)
-        self.state += list(line_p_dict.values())
-        self.state += list(line_q_dict.values())
+        self.state.append(self.timestep / 25.0)
+        self.base_power = 6.0
+        self.state += [val / self.base_power for val in list(line_p_dict.values())]
+        self.state += [val / self.base_power for val in list(line_q_dict.values())]
+
         self.state.append(0.0) #state of charge, prava vrijednost se postavlja ispod...
 
         self.state_space_dims = len(self.state)
@@ -63,9 +65,9 @@ class EnvironmentDiscrete(gym.Env):
         self.timestep += 1
         line_p_dict = self.power_flow.get_lines_active_power()
         line_q_dict = self.power_flow.get_lines_reactive_power()
-        self.state.append(self.timestep * 1.0)
-        self.state += list(line_p_dict.values())
-        self.state += list(line_q_dict.values())
+        self.state.append(self.timestep / 25.0)
+        self.state += [val / self.base_power for val in list(line_p_dict.values())]
+        self.state += [val / self.base_power for val in list(line_q_dict.values())]
         self.state.append(self.energy_storage.energyStorageState.soc)
 
         if self.state_space_dims != len(self.state):
@@ -93,7 +95,7 @@ class EnvironmentDiscrete(gym.Env):
         self.network_manager.set_load_scaling(load_percents)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(action, cant_execute)
+        reward = self.calculate_reward(action, actual_action, cant_execute)
         done = self.timestep == 24
         self._update_available_actions()
         return next_state, reward, done, actual_action, initial_soc
@@ -107,7 +109,7 @@ class EnvironmentDiscrete(gym.Env):
         
         #reward =  -0.1 * (self.power_flow.get_losses() - self.startng_loss)
         if self.timestep >= 7 and self.timestep < 15:
-            reward = - 0.2 * action
+            reward = - 0.2 * actual_action
         else:
             reward = 0
             
@@ -128,9 +130,9 @@ class EnvironmentDiscrete(gym.Env):
         self.power_flow.calculate_power_flow()
         line_p_dict = self.power_flow.get_lines_active_power()
         line_q_dict = self.power_flow.get_lines_reactive_power()
-        self.state.append(self.timestep * 1.0)
-        self.state += list(line_p_dict.values())
-        self.state += list(line_q_dict.values())
+        self.state.append(self.timestep / 25.0)
+        self.state += [val / self.base_power for val in list(line_p_dict.values())]
+        self.state += [val / self.base_power for val in list(line_q_dict.values())]
         self.state.append(self.energy_storage.energyStorageState.soc) #todo ovo kasnije mora biti lista a ne jedan soc
 
         self._update_available_actions()
