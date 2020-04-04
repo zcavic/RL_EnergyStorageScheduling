@@ -36,6 +36,7 @@ class EnvironmentContinous(gym.Env):
         self.network_manager = nm.NetworkManagement()
         self.power_flow = PowerFlow(self.network_manager)
         self.power_flow.calculate_power_flow() #potrebno zbog odredjivanja state_space_dims
+        self.losses_baseline = self.power_flow.get_losses()
 
         #p i q po granama je dovoljno da agent moze da napravi internu reprezentaciju gubitakam injektiranih snaga u cvorove
         # i snage koja se uzima iz prenosne mreze
@@ -76,36 +77,30 @@ class EnvironmentContinous(gym.Env):
             print("Warning: environment_continous -> _update_state - wrong state size")
         return self.state
 
-    def step(self, action, solar_percents, load_percents):
+    def step(self, action, solar_percents, load_percents, electricity_price):
         initial_soc = self.energy_storage.energyStorageState.soc
         actual_action, cant_execute = self.energy_storage.send_action(action)
         #self.network_manager.set_storage_scaling(action, self.agent_index)
 
-        self.network_manager.set_generation_scaling(solar_percents)
-        self.network_manager.set_load_scaling(load_percents)
-
         next_state = self._update_state()
         reward = self.calculate_reward(action, actual_action, cant_execute)
         done = self.timestep == 24
+
+        #sljedeci trenutak
+        self.network_manager.set_generation_scaling(solar_percents)
+        self.network_manager.set_load_scaling(load_percents)
+        self.electricity_price_this_moment = electricity_price[0]
         return next_state, reward, done, actual_action, initial_soc
 
 
     def calculate_reward(self, action, actual_action, cant_execute):
-        #za sada q ne razmatramo jer storage salje akcije samo po p
-        #q idalje stoji u stanju, ako htjednemo da ukljucimo losses ovdje
-        #ako je network_injected_p negativno, onda ce agent pokusavati da ga poveca - da poveca prodaju u prenosnu mrezu, to je ok
-        #return -1 * self.power_flow.get_network_injected_p().values[0]
-        
-        #reward =  -0.1 * (self.power_flow.get_losses() - self.startng_loss)
-        if self.timestep >= 7 and self.timestep < 15:
-            reward = - 0.2 * actual_action
-        else:
-            reward = 0
+        reward = -1 * self.electricity_price_this_moment * (self.power_flow.get_losses() - self.losses_baseline)
             
         return reward
 
-    def reset(self, solar_percents, load_percents):
+    def reset(self, solar_percents, load_percents, electricity_price):
         self.timestep = 0
+        self.electricity_price_this_moment = electricity_price[0]
         self.network_manager.set_storage_scaling(1.0, self.agent_index)
 
         self.network_manager.set_generation_scaling(solar_percents)

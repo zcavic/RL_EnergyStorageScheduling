@@ -31,7 +31,7 @@ def main():
     n_episodes = 30000
     print('agent training started')
     t1 = time.time()
-    #agent.train(df_train, n_episodes)
+    agent.train(df_train, n_episodes)
     t2 = time.time()
     print ('agent training finished in', t2-t1)
 

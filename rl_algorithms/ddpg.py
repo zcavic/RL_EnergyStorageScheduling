@@ -50,7 +50,7 @@ class Actor(nn.Module):
         return x
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.5, min_sigma=0.5, decay_period=100):
+    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.7, min_sigma=0.7, decay_period=100):
         self.mu           = mu
         self.theta        = theta
         self.sigma        = max_sigma
@@ -210,8 +210,8 @@ class DDPGAgent:
 
     def environment_reset(self, df_day):
         first_row = df_day.iloc[0]
-        solar_percents, load_percents = get_scaling_from_row(first_row)
-        return self.environment.reset(solar_percents, load_percents)
+        solar_percents, load_percents, electricity_price = get_scaling_from_row(first_row)
+        return self.environment.reset(solar_percents, load_percents, electricity_price)
 
     
     def train(self, df_train, n_episodes):
@@ -223,8 +223,8 @@ class DDPGAgent:
                 print("Episode: ", i_episode)
                 
             if (i_episode == 10000):
-                self.noise.min_sigma = 0.2
-                self.noise.max_sigma = 0.2
+                self.noise.min_sigma = 0.3
+                self.noise.max_sigma = 0.3
 
             df_train_day = select_random_day(df_train)
             state = self.environment_reset(df_train_day)
@@ -247,9 +247,9 @@ class DDPGAgent:
 
                 if (next_timestep_idx < len(df_train_day)):
                     row = df_train_day.iloc[next_timestep_idx]
-                    next_solar_percents, next_load_percents = get_scaling_from_row(row)
+                    next_solar_percents, next_load_percents, electricity_price = get_scaling_from_row(row)
 
-                next_state, reward, done, _, _ = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                next_state, reward, done, _, _ = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents, electricity_price = electricity_price)
                 total_episode_reward += reward
                 self.timestep += 1
                 
@@ -303,12 +303,14 @@ class DDPGAgent:
             proposed_storage_powers = []
             actual_storage_powers = []
             storage_socs = []
+            electricity_price = []
 
             #inicijalni red iz dataframe sluzi za inicijalizaciju, on se u okviru predstojece petlje preskace
             first_row = df_test_day.iloc[0]
-            first_solar_percents, first_load_percents = get_scaling_from_row(first_row)
+            first_solar_percents, first_load_percents, first_electricity_price = get_scaling_from_row(first_row)
             solar_powers.append(first_solar_percents[0] * -1)
             load_powers.append(first_load_percents[0])
+            electricity_price.append(first_electricity_price[0])
 
             for next_timestep_idx in range(1, len(df_test_day)+1):
                 state = np.asarray(state)
@@ -318,11 +320,12 @@ class DDPGAgent:
                     print('Warning: deep_q_learning.train - abs(action) > 1')
                 if (next_timestep_idx < len(df_test_day)):
                     row = df_test_day.iloc[next_timestep_idx]
-                    next_solar_percents, next_load_percents = get_scaling_from_row(row)
+                    next_solar_percents, next_load_percents, next_electricity_price = get_scaling_from_row(row)
                     solar_powers.append(next_solar_percents[0] * -1)
                     load_powers.append(next_load_percents[0])
+                    electricity_price.append(next_electricity_price[0])
 
-                next_state, reward, done, actual_action, initial_soc = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents)
+                next_state, reward, done, actual_action, initial_soc = self.environment.step(action = action, solar_percents = next_solar_percents, load_percents = next_load_percents, electricity_price = next_electricity_price)
                 
                 actual_storage_powers.append(actual_action)
                 storage_socs.append(initial_soc)
@@ -330,4 +333,4 @@ class DDPGAgent:
                 total_episode_reward += reward
                 state = next_state
         print('total_episode_reward', total_episode_reward)
-        plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs)
+        plot_daily_results(int(day_start_time/24 + 1), solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs, electricity_price)

@@ -38,14 +38,17 @@ def select_random_day(df):
     day_df = get_day_from_day_start(day_start_sample, df)
     return day_df
 
+#vraca vrijednosti svih solara i loadova za jedan trenutak
 def get_scaling_from_row(row):
     solar_columnes = ['solar1'] #todo hardcode da li ovo nekako povezati sa create dataset, a da ovo bude globalna promjenljiva u utils
     load_columnes = ['load1']
+    electricity_price_columnes = ['electricity_price']
     solar_percents = row[solar_columnes].values.tolist() #list of scaling factors for every solar in the network
     load_percents = row[load_columnes].values.tolist() 
-    return solar_percents, load_percents
+    electricity_price = row[electricity_price_columnes].values.tolist() 
+    return solar_percents, load_percents, electricity_price
 
-def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs):
+def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs, electricity_price):
     time = [i for i in range(24)]
 
     fig, (ax0, ax1) = plt.subplots(2, 1, sharex=True)
@@ -55,6 +58,7 @@ def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_power
     ax0.step(time, load_powers, label='Load', color='r')
     ax0.step(time, proposed_storage_powers, label='Storage proposed', color='k')
     ax0.step(time, actual_storage_powers, label='Storage actual', color='b')
+    ax0.step(time, electricity_price, label='Electricity price')
     ax0.legend(loc='upper right')
 
     ax1.set_title('State of charge')
