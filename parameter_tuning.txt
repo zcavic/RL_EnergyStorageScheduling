@@ -2,3 +2,5 @@ DDPG:
 self.tau je trenutno 1e-2, standardna vrijednost je 1e-3, ali ona vazi kada ima mnogo epizoda
 Parametre za OU noise detaljnije stimati:
 def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.1, min_sigma=0.1, decay_period=100):
+
+test
