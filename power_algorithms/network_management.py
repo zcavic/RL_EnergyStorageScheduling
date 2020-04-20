@@ -81,3 +81,6 @@ class NetworkManagement:
 
     def print_cap_status(self):
         print(self.power_grid.switch)
+
+    def get_es_indexes(self):
+       return self.power_grid.storage.index
