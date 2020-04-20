@@ -1,13 +1,14 @@
 import power_algorithms.network_definition as grid
 import pandapower as pp
 import pandas as pd
+import pandapower.networks as pn
 
 from environment.energy_storage import EnergyStorage
 
 
 class NetworkManagement:
     def __init__(self):
-        self.power_grid = grid.create_network()
+        self.power_grid = pn.create_cigre_network_mv(with_der="all")#grid.create_network()
 
     def get_power_grid(self):
         return self.power_grid
@@ -27,6 +28,14 @@ class NetworkManagement:
 
     def get_all_capacitors(self):
         return pd.Series(self.power_grid.switch.closed.values, index=self.power_grid.switch.name).to_dict()
+
+    def set_scaling_to_all_load(self, scaling_factor):
+        for index in self.power_grid.load.index:
+            self.power_grid.load.scaling.loc[index] = scaling_factor
+
+    def set_scaling_to_all_generation(self, scaling_factor):
+        for index in self.power_grid.sgen.index:
+            self.power_grid.sgen.scaling.loc[index] = scaling_factor
 
     def set_load_scaling(self, scaling_factors):
         if (len(scaling_factors) != len(self.power_grid.load.index)):

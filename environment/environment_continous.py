@@ -87,8 +87,8 @@ class EnvironmentContinous(gym.Env):
         done = self.timestep == 24
 
         #sljedeci trenutak
-        self.network_manager.set_generation_scaling(solar_percents)
-        self.network_manager.set_load_scaling(load_percents)
+        self.network_manager.set_scaling_to_all_generation(solar_percents[0])
+        self.network_manager.set_scaling_to_all_load(load_percents[0])
         self.electricity_price_this_moment = electricity_price[0]
         return next_state, reward, done, actual_action, initial_soc
 
@@ -103,12 +103,12 @@ class EnvironmentContinous(gym.Env):
         self.electricity_price_this_moment = electricity_price[0]
         self.network_manager.set_storage_scaling(1.0, self.agent_index)
 
-        self.network_manager.set_generation_scaling(solar_percents)
-        self.network_manager.set_load_scaling(load_percents)
+        self.network_manager.set_scaling_to_all_generation(solar_percents[0])
+        self.network_manager.set_scaling_to_all_load(load_percents[0])
 
         #todo neka ovo bude lista ili nesto...?
-        index = 0 #ili 1, provjeri?
-        self.energy_storage = EnergyStorage(index, self.network_manager.power_grid, self.power_flow)
+        index = self.network_manager.get_es_indexes() #za sada upravljamo samo jednim ES
+        self.energy_storage = EnergyStorage(index[0], self.network_manager.power_grid, self.power_flow)
 
         self.state = []
         self.power_flow.calculate_power_flow()

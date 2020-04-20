@@ -68,7 +68,7 @@ class EnergyStorageState:
 
     def set_power(self, power):
         if self.max_power < power:
-            self.power = self.max_power
+            self.power = [self.max_power] * len(power)
         else:
             self.power = power
 
