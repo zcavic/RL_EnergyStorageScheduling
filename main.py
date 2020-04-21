@@ -28,7 +28,7 @@ def main():
     #agent = DeepQLearningAgent(environment_discrete)
     agent = DDPGAgent(environment_continous)
 
-    n_episodes = 30000
+    n_episodes = 100
     print('agent training started')
     t1 = time.time()
     agent.train(df_train, n_episodes)
