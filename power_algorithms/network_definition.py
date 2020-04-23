@@ -1,4 +1,5 @@
 import pandapower as pp
+import pandapower.networks as pn
 
 def create_network():
     network = pp.create_empty_network()
@@ -43,3 +44,12 @@ def create_network():
         pp.create_line(network, from_bus=busNodes[i], to_bus=busNodes[i+1], length_km=1, name="Line_" + str(i+1), std_type="NA2XS2Y 1x150 RM/25 12/20 kV")
 	
     return network
+
+
+def create_cigre_network_mv():
+    power_grid = pn.create_cigre_network_mv(with_der="all")
+
+    for index in power_grid.storage.index:
+        power_grid.storage.p_mw.loc[index] = 5
+
+    return power_grid

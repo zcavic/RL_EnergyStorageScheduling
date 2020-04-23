@@ -1,14 +1,12 @@
 import power_algorithms.network_definition as grid
 import pandapower as pp
 import pandas as pd
-import pandapower.networks as pn
-
 from environment.energy_storage import EnergyStorage
 
 
 class NetworkManagement:
     def __init__(self):
-        self.power_grid = pn.create_cigre_network_mv(with_der="all")#grid.create_network()
+        self.power_grid = grid.create_cigre_network_mv()
 
     def get_power_grid(self):
         return self.power_grid
