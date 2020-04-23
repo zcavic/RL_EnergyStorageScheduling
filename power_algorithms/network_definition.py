@@ -51,5 +51,6 @@ def create_cigre_network_mv():
 
     for index in power_grid.storage.index:
         power_grid.storage.p_mw.loc[index] = 5
+        power_grid.storage.max_e_mwh.loc[index] = 10000
 
     return power_grid
