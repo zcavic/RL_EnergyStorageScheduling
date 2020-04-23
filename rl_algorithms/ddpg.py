@@ -17,18 +17,19 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear2_bn = nn.BatchNorm1d(hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        self.linear3 = nn.Linear(hidden_size, hidden_size)
+        self.linear4 = nn.Linear(hidden_size, output_size)
 
         init_w = 3e-3
-        self.linear3.weight.data.uniform_(-init_w, init_w)
-        self.linear3.bias.data.uniform_(-init_w, init_w)
+        self.linear4.weight.data.uniform_(-init_w, init_w)
+        self.linear4.bias.data.uniform_(-init_w, init_w)
 
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
         x = torch.relu(self.linear1(x))
-        x = torch.relu(self.linear2_bn(self.linear2(x)))
-        x = self.linear3(x) #returns q value, should not be limited by tanh
+        x = torch.relu(self.linear2(x))
+        x = torch.relu(self.linear3(x))
+        x = self.linear4(x) #returns q value, should not be limited by tanh
         return x
 
 class Actor(nn.Module):
@@ -36,17 +37,18 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear2_bn = nn.BatchNorm1d(hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        self.linear3 = nn.Linear(hidden_size, hidden_size)
+        self.linear4 = nn.Linear(hidden_size, output_size)
 
         init_w = 3e-3
-        self.linear3.weight.data.uniform_(-init_w, init_w)
-        self.linear3.bias.data.uniform_(-init_w, init_w)
+        self.linear4.weight.data.uniform_(-init_w, init_w)
+        self.linear4.bias.data.uniform_(-init_w, init_w)
 
     def forward(self, state):
         x = torch.relu(self.linear1(state))
-        x = torch.relu(self.linear2_bn(self.linear2(x)))        
-        x = torch.tanh(self.linear3(x))
+        x = torch.relu(self.linear2(x))   
+        x = torch.relu(self.linear3(x))
+        x = torch.tanh(self.linear4(x))
         return x
 
 class OUNoise(object):
@@ -218,6 +220,7 @@ class DDPGAgent:
         #self.actor.load_state_dict(torch.load("model_actor"))
         #self.critic.load_state_dict(torch.load("model_critic"))
         total_episode_rewards = []
+        self.moving_average = 0.0
         for i_episode in range(n_episodes):
             if (i_episode % 20 == 0):
                 print("Episode: ", i_episode)
@@ -262,7 +265,10 @@ class DDPGAgent:
                 if (next_timestep_idx != self.environment.timestep):
                     print('Warning: deep_q_learning.train - something may be wrong with timestep indexing')
 
-            total_episode_rewards.append(total_episode_reward)
+            if (i_episode == 0):
+                self.moving_average = total_episode_reward
+            self.moving_average = 0.9*self.moving_average + 0.1*total_episode_reward
+            total_episode_rewards.append(self.moving_average)
             
             if (i_episode % 20 == 0):
                 print ("total_episode_reward: ", total_episode_reward)

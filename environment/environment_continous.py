@@ -44,7 +44,7 @@ class EnvironmentContinous(gym.Env):
         line_q_dict = self.power_flow.get_lines_reactive_power()
         self.state.append(self.timestep / 25.0)
         #todo odabrati neku baznu snagu koja je priblizna najvecoj snazi prve sekcije u najgorem slucaju 
-        self.base_power = 6.0
+        self.base_power = 0.01
         self.state += [val / self.base_power for val in list(line_p_dict.values())] # moze ovo elegantnije
         self.state += [val / self.base_power for val in list(line_q_dict.values())]
         self.state.append(0.0) #state of charge, prava vrijednost se postavlja ispod...
@@ -94,7 +94,7 @@ class EnvironmentContinous(gym.Env):
 
 
     def calculate_reward(self, action, actual_action, cant_execute):
-        reward = -1 * self.electricity_price_this_moment * (self.power_flow.get_losses() - self.losses_baseline)
+        reward = -0.5 * self.electricity_price_this_moment * (self.power_flow.get_losses() - self.losses_baseline)
             
         return reward
 
