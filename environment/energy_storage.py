@@ -9,7 +9,7 @@ class EnergyStorage:
         self.power_flow = power_flow
         self.max_p_kw = self.power_grid.storage.p_mw.loc[index]
         self.max_e_mwh = self.power_grid.storage.max_e_mwh.loc[index] #1000000.0
-        initial_soc = 0.0
+        initial_soc = 4.0
         self.energyStorageState = IdleState(self, self.max_e_mwh, self.max_p_kw, initial_soc)
 
     def state(self):

@@ -94,7 +94,7 @@ class EnvironmentContinous(gym.Env):
 
 
     def calculate_reward(self, action, actual_action, cant_execute):
-        reward = -0.5 * self.electricity_price_this_moment * (self.power_flow.get_losses() - self.losses_baseline)
+        reward = - 0.2 * self.electricity_price_this_moment * actual_action
             
         return reward
 
