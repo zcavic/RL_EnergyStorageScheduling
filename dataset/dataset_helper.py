@@ -27,15 +27,15 @@ def update_measurements():
         # get LF results and add to measurements
         for index in power_network.bus.index:
             if power_network.bus.name.loc[index] in df.columns:
-                df[power_network.bus.name.loc[index]][timestamp] = power_network.res_bus.p_mw.loc[0]
+                df[power_network.bus.name.loc[index]][timestamp] = power_network.res_bus.p_mw.loc[index]
 
         for index in power_network.line.index:
             if power_network.line.name.loc[index] in df.columns:
-                df[power_network.line.name.loc[index]][timestamp] = power_network.res_line.p_from_kw.l.loc[0]
+                df[power_network.line.name.loc[index]][timestamp] = power_network.res_line.p_from_mw.loc[index]
 
         for index in power_network.storage.index:
             if power_network.storage.name.loc[index] in df.columns:
-                df[power_network.storage.name.loc[index]][timestamp] = power_network.storage.p_kw.l.loc[0]
+                df[power_network.storage.name.loc[index]][timestamp] = power_network.res_storage.p_mw.loc[index]
 
     _save_dataframe_to_csv(df)
 
