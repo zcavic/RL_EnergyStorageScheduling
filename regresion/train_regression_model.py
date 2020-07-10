@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
+import numpy as np
 from utils import load_dataset
 
 pd.set_option('display.max_rows', 500)
@@ -32,15 +33,19 @@ def train_regression_model():
     fig2 = plt.figure(figsize=(6, 6))
     plt.plot(y_test, y_test, c='k')
     plt.scatter(y_test, y_pred, c='g')
-    plt.xlabel('Measurements')
-    plt.ylabel('Predicted setpoints')
-    plt.title("Measurements vs Predicted setpoints")
+    plt.xlabel('Real Measurements')
+    plt.ylabel('Predicted Measurements')
+    plt.title("Real Measurements vs Predicted Measurements")
     fig2.savefig('regression_1.png')
 
 
 def _get_x(df):
-    return df[['Bus 1', 'Bus 12', 'Line 5-6', 'Line 8-9', 'Line 7-8', 'Line 13-14', 'Battery 1', 'Battery 2']].iloc[1:]
+    x = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14', 'Battery 1', 'Battery 2']]
+    x.loc[:, 'Battery 1 Command'] = df.loc[:, 'Battery 1'].shift(-1)
+    x.loc[:, 'Battery 2 Command'] = df.loc[:, 'Battery 2'].shift(-1)
+    return x.iloc[1:].iloc[:-1]
 
 
 def _get_y(df):
-    return df[['Battery 1', 'Battery 2']].shift().iloc[1:]
+    y = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14', 'Battery 1', 'Battery 2']].shift(1)
+    return y.iloc[1:].iloc[:-1]

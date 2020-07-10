@@ -8,7 +8,7 @@ import gym
 
 def load_dataset():
     script_dir = os.path.dirname(__file__)
-    file_path = os.path.join(script_dir, './dataset/data.csv')
+    file_path = os.path.join(script_dir, './dataset/cigre_dataset_measurements.csv')
     df = pd.read_csv(file_path, index_col=0)
 
     return df

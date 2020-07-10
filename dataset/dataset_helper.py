@@ -7,14 +7,16 @@ import random
 
 def create_dataset_scv():
     power_network = grid.create_cigre_network_mv()
-    df = _get_df()
+    df = _load_df()
+    df_m = _load_measurements_df()
 
     for timestamp in df.index:
         _update_network(power_network, df, timestamp)
         _calculate_power_flow(power_network)
-        _update_df_with_measurements(power_network, df, timestamp)
+        _generate_random_command_on_storage(power_network)
+        _update_df_with_measurements(power_network, df_m, timestamp)
 
-    _save_df_to_csv(df)
+    _save_measurements_df_to_csv(df_m)
 
 
 def _update_network(power_network, df, timestamp):
@@ -33,21 +35,27 @@ def _update_network(power_network, df, timestamp):
         power_network.storage.scaling.loc[index] = random.random()*random.choice((-1, 1))
 
 
+def _generate_random_command_on_storage(power_network):
+    for index in power_network.storage.index:
+        power_network.storage.scaling.loc[index] = random.random()*random.choice((-1, 1))
+
+
 def _update_df_with_measurements(power_network, df, timestamp):
+    s_base = 17
     for index in power_network.bus.index:
         if power_network.bus.name.loc[index] in df.columns:
-            df[power_network.bus.name.loc[index]][timestamp] = power_network.res_bus.p_mw.loc[index]
+            df[power_network.bus.name.loc[index]][timestamp] = power_network.res_bus.p_mw.loc[index] / s_base
 
     for index in power_network.line.index:
         if power_network.line.name.loc[index] in df.columns:
-            df[power_network.line.name.loc[index]][timestamp] = power_network.res_line.p_from_mw.loc[index]
+            df[power_network.line.name.loc[index]][timestamp] = power_network.res_line.p_from_mw.loc[index] / s_base
 
     for index in power_network.storage.index:
         if power_network.storage.name.loc[index] in df.columns:
-            df[power_network.storage.name.loc[index]][timestamp] = power_network.res_storage.p_mw.loc[index]
+            df[power_network.storage.name.loc[index]][timestamp] = power_network.res_storage.p_mw.loc[index] / s_base
 
 
-def _get_df():
+def _load_df():
     script_dir = os.path.dirname(__file__)
     file_path = os.path.join(script_dir, './cigre_dataset.csv')
 
@@ -56,9 +64,18 @@ def _get_df():
     return df
 
 
-def _save_df_to_csv(df):
+def _load_measurements_df():
     script_dir = os.path.dirname(__file__)
-    file_path = os.path.join(script_dir, './cigre_dataset_all.csv')
+    file_path = os.path.join(script_dir, './cigre_dataset_measurements.csv')
+
+    df = pd.read_csv(file_path, index_col=0)
+
+    return df
+
+
+def _save_measurements_df_to_csv(df):
+    script_dir = os.path.dirname(__file__)
+    file_path = os.path.join(script_dir, './cigre_dataset_measurements.csv')
 
     df.to_csv(file_path, index=True)
 
