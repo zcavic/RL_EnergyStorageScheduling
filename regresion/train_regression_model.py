@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import numpy as np
 from utils import load_dataset
+from sklearn import metrics
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -38,8 +39,13 @@ def train_regression_model():
     plt.title("Real Measurements vs Predicted Measurements")
     fig2.savefig('regression_1.png')
 
+    print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))
+    print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))
+    print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+
 
 def _get_x(df):
+
     x = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14', 'Battery 1', 'Battery 2']]
     x.loc[:, 'Battery 1 Command'] = df.loc[:, 'Battery 1'].shift(-1)
     x.loc[:, 'Battery 2 Command'] = df.loc[:, 'Battery 2'].shift(-1)
@@ -47,5 +53,5 @@ def _get_x(df):
 
 
 def _get_y(df):
-    y = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14', 'Battery 1', 'Battery 2']].shift(1)
+    y = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14']].shift(1)
     return y.iloc[1:].iloc[:-1]
