@@ -31,17 +31,15 @@ def _update_network(power_network, df, timestamp):
             power_network.sgen.scaling.loc[index] = df[power_network.sgen.name.loc[index]][timestamp]
         else:
             power_network.sgen.scaling.loc[index] = 0
-    for index in power_network.storage.index:
-        power_network.storage.scaling.loc[index] = random.random()*random.choice((-1, 1))
 
 
 def _generate_random_command_on_storage(power_network):
     for index in power_network.storage.index:
-        power_network.storage.scaling.loc[index] = random.random()*random.choice((-1, 1))
+        power_network.storage.scaling.loc[index] = random.randint(1, 10)*random.choice((-1, 1))/10
 
 
 def _update_df_with_measurements(power_network, df, timestamp):
-    s_base = 17
+    s_base = 6
     for index in power_network.bus.index:
         if power_network.bus.name.loc[index] in df.columns:
             df[power_network.bus.name.loc[index]][timestamp] = power_network.res_bus.p_mw.loc[index] / s_base
@@ -49,6 +47,10 @@ def _update_df_with_measurements(power_network, df, timestamp):
     for index in power_network.line.index:
         if power_network.line.name.loc[index] in df.columns:
             df[power_network.line.name.loc[index]][timestamp] = power_network.res_line.p_from_mw.loc[index] / s_base
+
+    for index in power_network.trafo.index:
+        if power_network.trafo.name.loc[index] in df.columns:
+            df[power_network.trafo.name.loc[index]][timestamp] = power_network.res_trafo.p_hv_mw.loc[index] / s_base
 
     for index in power_network.storage.index:
         if power_network.storage.name.loc[index] in df.columns:

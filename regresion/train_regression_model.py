@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 from utils import load_dataset
 from sklearn import metrics
+from sklearn.multioutput import MultiOutputRegressor
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -21,7 +22,7 @@ def train_regression_model():
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, random_state=28)
 
     # RandomForestRegressor
-    clf = RandomForestRegressor(random_state=1)
+    clf = MultiOutputRegressor(RandomForestRegressor(random_state=1))
     print('training regression started')
     t1 = time.time()
     clf.fit(x_train, y_train)
@@ -45,13 +46,12 @@ def train_regression_model():
 
 
 def _get_x(df):
-
-    x = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14', 'Battery 1', 'Battery 2']]
+    x = df[['Trafo 0-1', 'Trafo 0-12', 'Line 3-8', 'Line 3-4', 'Line 9-10', 'Line 7-8', 'Line 13-14', 'Battery 1', 'Battery 2']]
     x.loc[:, 'Battery 1 Command'] = df.loc[:, 'Battery 1'].shift(-1)
     x.loc[:, 'Battery 2 Command'] = df.loc[:, 'Battery 2'].shift(-1)
     return x.iloc[1:].iloc[:-1]
 
 
 def _get_y(df):
-    y = df[['Bus 1', 'Bus 12', 'Bus 4', 'Bus 9', 'Bus 7', 'Bus 14']].shift(1)
+    y = df[['Trafo 0-1', 'Trafo 0-12', 'Line 3-8', 'Line 3-4', 'Line 9-10', 'Line 7-8', 'Line 13-14']].shift(1)
     return y.iloc[1:].iloc[:-1]
