@@ -8,6 +8,9 @@ import numpy as np
 from utils import load_dataset
 from sklearn import metrics
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -21,6 +24,11 @@ def train_regression_model():
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, random_state=28)
 
+    sc = StandardScaler()
+    x_train = sc.fit_transform(x_train)
+    x_test = sc.transform(x_test)
+
+    """
     # RandomForestRegressor
     clf = MultiOutputRegressor(RandomForestRegressor(random_state=1))
     print('training regression started')
@@ -29,8 +37,19 @@ def train_regression_model():
     t2 = time.time()
     print('training regression finished in', t2 - t1)
     y_pred = clf.predict(x_test)
-
     pickle.dump(clf, open('Aguas_Santas_regression_model_with_outdoor.sav', 'wb'))
+    """
+
+    # Gaussian Process model
+    print('training regression started')
+    kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
+    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
+    t1 = time.time()
+    gp.fit(x_train, y_train)
+    t2 = time.time()
+    print('training regression finished in', t2 - t1)
+    y_pred = gp.predict(x_test)
+
 
     fig2 = plt.figure(figsize=(6, 6))
     plt.plot(y_test, y_test, c='k')
@@ -46,7 +65,8 @@ def train_regression_model():
 
 
 def _get_x(df):
-    x = df[['Trafo 0-1', 'Trafo 0-12', 'Line 3-8', 'Line 3-4', 'Line 9-10', 'Line 7-8', 'Line 13-14', 'Battery 1', 'Battery 2']]
+    x = df[['Trafo 0-1', 'Trafo 0-12', 'Line 3-8', 'Line 3-4', 'Line 9-10', 'Line 7-8', 'Line 13-14', 'Battery 1',
+            'Battery 2']]
     x.loc[:, 'Battery 1 Command'] = df.loc[:, 'Battery 1'].shift(-1)
     x.loc[:, 'Battery 2 Command'] = df.loc[:, 'Battery 2'].shift(-1)
     return x.iloc[1:].iloc[:-1]
