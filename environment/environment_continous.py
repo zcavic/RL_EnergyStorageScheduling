@@ -79,7 +79,7 @@ class EnvironmentContinous(gym.Env):
 
     def step(self, action, solar_percents, load_percents, electricity_price):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, cant_execute = self.energy_storage.send_action(action)
+        actual_action, cant_execute = self.energy_storage.send_action(action, self.timestep)
         #self.network_manager.set_storage_scaling(action, self.agent_index)
 
         next_state = self._update_state()

@@ -8,7 +8,7 @@ import gym
 
 def load_dataset():
     script_dir = os.path.dirname(__file__)
-    file_path = os.path.join(script_dir, './dataset/cigre_dataset_measurements.csv')
+    file_path = os.path.join(script_dir, './dataset/data.csv')
     df = pd.read_csv(file_path, index_col=0)
 
     return df
@@ -51,19 +51,22 @@ def get_scaling_from_row(row):
 def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs, electricity_price):
     time = [i for i in range(24)]
 
-    fig, (ax0, ax1) = plt.subplots(2, 1, sharex=True)
+    fig, (ax0, ax1, ax2) = plt.subplots(3, 1, sharex=True)
 
     ax0.set_title('Powers')
     ax0.step(time, solar_powers, label='Solar', color='g')
     ax0.step(time, load_powers, label='Load', color='r')
-    ax0.step(time, proposed_storage_powers, label='Storage proposed', color='k')
-    ax0.step(time, actual_storage_powers, label='Storage actual', color='b')
     ax0.step(time, electricity_price, label='Electricity price')
     ax0.legend(loc='upper right')
 
-    ax1.set_title('State of charge')
-    ax1.plot(time, storage_socs, label='Storage soc', color='b')
+    ax1.set_title('Powers Action')
+    ax1.step(time, proposed_storage_powers, label='Storage proposed', color='k')
+    ax1.step(time, actual_storage_powers, label='Storage actual', color='b')
     ax1.legend(loc='upper right')
+
+    ax2.set_title('State of charge')
+    ax2.plot(time, storage_socs, label='Storage soc', color='b')
+    ax2.legend(loc='upper right')
 
 
     fig.savefig(str(day_id) + '_day_resuts.png')
