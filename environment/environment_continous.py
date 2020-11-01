@@ -1,14 +1,15 @@
 import gym
 from gym import spaces
 import random
-import numpy as np 
+import numpy as np
 from power_algorithms.power_flow import PowerFlow
 import power_algorithms.network_management as nm
 from gym.spaces import Tuple
 from gym.spaces.space import Space
 from environment.energy_storage import EnergyStorage
 
-#Custom space
+
+# Custom space
 class Incremental(Space):
     def __init__(self, start, stop, step, **kwargs):
         self.step = step
@@ -22,43 +23,45 @@ class Incremental(Space):
     def contains(self, x):
         return x in self.values
 
+
 class EnvironmentContinous(gym.Env):
-    
+
     def __init__(self):
         super(EnvironmentContinous, self).__init__()
-        
-        self.state = []
-        self.timestep = 0 #0..23, ako je 24, onda ce next_state biti None
 
-        #todo kada bude vise agenata ovo ce biti lista
-        self.agent_index = 0 #za sada imamo jednog agenta
+        self.state = []
+        self.timestep = 0  # 0..23, ako je 24, onda ce next_state biti None
+
+        # todo kada bude vise agenata ovo ce biti lista
+        self.agent_index = 0  # za sada imamo jednog agenta
 
         self.network_manager = nm.NetworkManagement()
         self.power_flow = PowerFlow(self.network_manager)
-        self.power_flow.calculate_power_flow() #potrebno zbog odredjivanja state_space_dims
+        self.power_flow.calculate_power_flow()  # potrebno zbog odredjivanja state_space_dims
         self.losses_baseline = self.power_flow.get_losses()
 
-        #p i q po granama je dovoljno da agent moze da napravi internu reprezentaciju gubitakam injektiranih snaga u cvorove
+        # p i q po granama je dovoljno da agent moze da napravi internu reprezentaciju gubitakam injektiranih snaga u cvorove
         # i snage koja se uzima iz prenosne mreze
         line_p_dict = self.power_flow.get_lines_active_power()
         line_q_dict = self.power_flow.get_lines_reactive_power()
         self.state.append(self.timestep / 25.0)
-        #todo odabrati neku baznu snagu koja je priblizna najvecoj snazi prve sekcije u najgorem slucaju 
+        # todo odabrati neku baznu snagu koja je priblizna najvecoj snazi prve sekcije u najgorem slucaju
         self.base_power = 0.01
-        self.state += [val / self.base_power for val in list(line_p_dict.values())] # moze ovo elegantnije
+        self.state += [val / self.base_power for val in list(line_p_dict.values())]  # moze ovo elegantnije
         self.state += [val / self.base_power for val in list(line_q_dict.values())]
-        self.state.append(0.0) #state of charge, prava vrijednost se postavlja ispod...
+        self.state.append(0.0)  # state of charge, prava vrijednost se postavlja ispod...
 
         self.state_space_dims = len(self.state)
-        self.action_space_dims = 1 #todo iz pandapowera dobavi broj energy storage-a umjesto hardkodovanja
+        self.action_space_dims = 1  # todo iz pandapowera dobavi broj energy storage-a umjesto hardkodovanja
 
-        #storage actions:
+        # storage actions:
         # p > 0 - charging
         # p < 0 - discharging
-        self.low_set_point = -1.0 # p.u.
+        self.low_set_point = -1.0  # p.u.
         self.high_set_point = 1.0
-        #todo liste ispod ce se morati prosiriti kada bude bilo vise agenata (npr lista [self.low_set_point])
-        self.action_space = spaces.Box(low=np.array([self.low_set_point]), high=np.array([self.high_set_point]), dtype=np.float16)
+        # todo liste ispod ce se morati prosiriti kada bude bilo vise agenata (npr lista [self.low_set_point])
+        self.action_space = spaces.Box(low=np.array([self.low_set_point]), high=np.array([self.high_set_point]),
+                                       dtype=np.float16)
         if (self.action_space_dims != self.action_space.shape[0]):
             print('Error in environment_continous.py: self.action_space_dims != self.action_space.shape[0]')
 
@@ -79,24 +82,24 @@ class EnvironmentContinous(gym.Env):
 
     def step(self, action, solar_percents, load_percents, electricity_price):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, cant_execute = self.energy_storage.send_action(action, self.timestep)
-        #self.network_manager.set_storage_scaling(action, self.agent_index)
+        actual_action, cant_execute = self.energy_storage.send_action(action[0], self.timestep)
+        # self.network_manager.set_storage_scaling(action, self.agent_index)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(action, actual_action, cant_execute)
+        reward = self.calculate_reward(actual_action, cant_execute)
         done = self.timestep == 24
 
-        #sljedeci trenutak
+        # sljedeci trenutak
         self.network_manager.set_scaling_to_all_generation(solar_percents[0])
         self.network_manager.set_scaling_to_all_load(load_percents[0])
         self.electricity_price_this_moment = electricity_price[0]
         return next_state, reward, done, actual_action, initial_soc
 
-
-    def calculate_reward(self, action, actual_action, cant_execute):
-        reward = - 0.2 * self.electricity_price_this_moment * actual_action
-            
-        return reward
+    def calculate_reward(self, actual_action, cant_execute):
+        if cant_execute:
+            return - self.electricity_price_this_moment * actual_action + 200
+        else:
+            return - 200
 
     def reset(self, solar_percents, load_percents, electricity_price):
         self.timestep = 0
@@ -106,8 +109,8 @@ class EnvironmentContinous(gym.Env):
         self.network_manager.set_scaling_to_all_generation(solar_percents[0])
         self.network_manager.set_scaling_to_all_load(load_percents[0])
 
-        #todo neka ovo bude lista ili nesto...?
-        index = self.network_manager.get_es_indexes() #za sada upravljamo samo jednim ES
+        # todo neka ovo bude lista ili nesto...?
+        index = self.network_manager.get_es_indexes()  # za sada upravljamo samo jednim ES
         self.energy_storage = EnergyStorage(index[0], self.network_manager.power_grid, self.power_flow)
 
         self.state = []

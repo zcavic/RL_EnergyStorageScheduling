@@ -10,7 +10,7 @@ class EnergyStorage:
         self.power_flow = power_flow
         self.max_p_kw = self.power_grid.storage.p_mw.loc[index]
         self.max_e_mwh = self.power_grid.storage.max_e_mwh.loc[index]
-        self.energyStorageState = IdleState(self, initial_soc=3.5, datetime=0, days_in_idle=0, no_of_cycles=0)
+        self.energyStorageState = IdleState(self, initial_soc=1, datetime=0, days_in_idle=0, no_of_cycles=0)
 
     def state(self):
         return self.energyStorageState.state()
@@ -115,7 +115,7 @@ class IdleState(EnergyStorageState):
         self.set_power(0)
 
     def update_soc(self, datetime):
-        self.days_in_idle += abs(datetime - self.datetime) / 24
+        self.days_in_idle = self.days_in_idle + abs(datetime - self.datetime) / 24
         self.datetime = datetime
 
 
@@ -155,7 +155,7 @@ class ChargingState(EnergyStorageState):
                                                                 self.soc, self.datetime, self.days_in_idle,
                                                                 self.no_of_cycles)
         else:
-            self.soc += self.power
+            self.soc = self.soc + self.power
         self.no_of_cycles += abs(self.power / self._energy_storage.max_e_mwh) / 2
 
 
@@ -190,14 +190,13 @@ class DischargingState(EnergyStorageState):
     # 1h elapsed
     def update_soc(self, datetime):
         self.datetime = datetime
-        dead_band = self._energy_storage.max_e_mwh * 0.2
-        if self.soc + self.power <= dead_band:
-            self.soc = dead_band
+        if self.soc + self.power <= 0:
+            self.soc = 0
             self._energy_storage.energyStorageState = IdleState(self._energy_storage,
                                                                 self.soc, self.datetime, self.days_in_idle,
                                                                 self.no_of_cycles)
         else:
-            self.soc += self.power
+            self.soc = self.soc + self.power
         self.no_of_cycles += abs(self.power / self._energy_storage.max_e_mwh) / 2
 
 

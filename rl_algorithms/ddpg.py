@@ -296,9 +296,9 @@ class DDPGAgent:
         self.actor.eval()
 
         day_starts = extract_day_starts(df_test)
-        day_start_times = list(day_starts.time)
+        day_start_times = list(day_starts.index)
         for day_start_time in day_start_times: 
-            df_test_day = df_test[(df_test.time >= day_start_time) & (df_test.time < day_start_time + 24)]
+            df_test_day = df_test[(df_test.index >= day_start_time) & (df_test.index < day_start_time + 24)]
             
             done = False
             state = self.environment_reset(df_test_day)
