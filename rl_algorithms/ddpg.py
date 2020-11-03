@@ -210,12 +210,6 @@ class DDPGAgent:
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(param.data*self.tau + target_param.data*(1.0 - self.tau))
 
-    def environment_reset(self, df_day):
-        first_row = df_day.iloc[0]
-        solar_percents, load_percents, electricity_price = get_scaling_from_row(first_row)
-        return self.environment.reset(solar_percents, load_percents, electricity_price)
-
-    
     def train(self, df_train, n_episodes):
         #self.actor.load_state_dict(torch.load("model_actor"))
         #self.critic.load_state_dict(torch.load("model_critic"))
@@ -230,7 +224,7 @@ class DDPGAgent:
                 self.noise.max_sigma = 0.3
 
             df_train_day = select_random_day(df_train)
-            state = self.environment_reset(df_train_day)
+            state = self.environment.reset(df_train_day.iloc[0])
 
             self.noise.reset()
             done = False
@@ -301,7 +295,7 @@ class DDPGAgent:
             df_test_day = df_test[(df_test.index >= day_start_time) & (df_test.index < day_start_time + 24)]
             
             done = False
-            state = self.environment_reset(df_test_day)
+            state = self.environment.reset(first_row.iloc[0])
             total_episode_reward = 0
             #todo neka ove promjenljive budu ukupne snage u mrezi u aps. jedinicama
             solar_powers = []

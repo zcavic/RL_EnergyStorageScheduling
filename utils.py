@@ -1,10 +1,8 @@
 import os
-import pandas as pd
-import datetime as dt
 import matplotlib.pyplot as plt
-from math import ceil
-import numpy as np
-import gym
+import pandas as pd
+
+from environment.energy_storage import ChargingState, DischargingState, IdleState
 
 
 def load_dataset():
@@ -53,6 +51,18 @@ def get_scaling_from_row(row):
     load_percents = row[load_columnes].values.tolist()
     electricity_price = row[electricity_price_columnes].values.tolist()
     return solar_percents, load_percents, electricity_price
+
+
+def get_energy_storage_state(row):
+    state_of_charge_columns = ['State of charge']
+    days_in_idle_columns = ['Days in idle']
+    no_of_cycles_columns = ['Number of cycles']
+    storage_load_columns = ['Storage Load']
+    state_of_charge = row[state_of_charge_columns].values.tolist()[0]
+    days_in_idle = row[days_in_idle_columns].values.tolist()[0]
+    no_of_cycles = row[no_of_cycles_columns].values.tolist()[0]
+    storage_load = row[storage_load_columns].values.tolist()[0]
+    return state_of_charge, days_in_idle, no_of_cycles, storage_load
 
 
 def plot_daily_results(day_id, solar_powers, load_powers, proposed_storage_powers, actual_storage_powers, storage_socs,

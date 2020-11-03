@@ -88,14 +88,14 @@ class EnvironmentDiscrete(gym.Env):
 
     def step(self, action, solar_percents, load_percents):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, cant_execute = self.energy_storage.send_action(action)
+        actual_action, can_execute = self.energy_storage.send_action(action)
         #self.network_manager.set_storage_scaling(action, self.agent_index)
 
         self.network_manager.set_generation_scaling(solar_percents)
         self.network_manager.set_load_scaling(load_percents)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(action, actual_action, cant_execute)
+        reward = self.calculate_reward(action, actual_action, can_execute)
         done = self.timestep == 24
         self._update_available_actions()
         return next_state, reward, done, actual_action, initial_soc

@@ -10,6 +10,9 @@ from environment.energy_storage import EnergyStorage
 
 
 # Custom space
+from utils import get_scaling_from_row, get_energy_storage_state
+
+
 class Incremental(Space):
     def __init__(self, start, stop, step, **kwargs):
         self.step = step
@@ -82,11 +85,11 @@ class EnvironmentContinous(gym.Env):
 
     def step(self, action, solar_percents, load_percents, electricity_price):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, cant_execute = self.energy_storage.send_action(action[0], self.timestep)
+        actual_action, can_execute = self.energy_storage.send_action(action[0])
         # self.network_manager.set_storage_scaling(action, self.agent_index)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(actual_action, cant_execute)
+        reward = self.calculate_reward(actual_action, can_execute)
         done = self.timestep == 24
 
         # sljedeci trenutak
@@ -95,13 +98,14 @@ class EnvironmentContinous(gym.Env):
         self.electricity_price_this_moment = electricity_price[0]
         return next_state, reward, done, actual_action, initial_soc
 
-    def calculate_reward(self, actual_action, cant_execute):
-        if cant_execute:
-            return - self.electricity_price_this_moment * actual_action + 200
+    def calculate_reward(self, actual_action, can_execute):
+        if can_execute:
+            return - self.electricity_price_this_moment * actual_action
         else:
-            return - 200
+            return - 10
 
-    def reset(self, solar_percents, load_percents, electricity_price):
+    def reset(self, first_row):
+        solar_percents, load_percents, electricity_price = get_scaling_from_row(first_row)
         self.timestep = 0
         self.electricity_price_this_moment = electricity_price[0]
         self.network_manager.set_storage_scaling(1.0, self.agent_index)
@@ -110,8 +114,10 @@ class EnvironmentContinous(gym.Env):
         self.network_manager.set_scaling_to_all_load(load_percents[0])
 
         # todo neka ovo bude lista ili nesto...?
+        state_of_charge, days_in_idle, no_of_cycles, storage_load = get_energy_storage_state(first_row)
         index = self.network_manager.get_es_indexes()  # za sada upravljamo samo jednim ES
-        self.energy_storage = EnergyStorage(index[0], self.network_manager.power_grid, self.power_flow)
+        self.energy_storage = EnergyStorage(index[0], self.network_manager.power_grid, self.power_flow, storage_load,
+                                            state_of_charge, days_in_idle, no_of_cycles)
 
         self.state = []
         self.power_flow.calculate_power_flow()
