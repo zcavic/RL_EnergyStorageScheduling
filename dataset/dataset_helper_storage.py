@@ -8,12 +8,13 @@ import os
 
 def create_dataset():
     _start_datetime = datetime(2000, 1, 1)
-    _end_datetime = datetime(2000, 1, 31)
+    _end_datetime = datetime(2001, 12, 31)
     _consumption_load_diagram = [0.2, 0.2, 0.1, 0.1, 0.2, 0.3, 0.5, 0.8, 0.9, 0.9, 0.7, 0.6, 0.5, 0.5, 0.6, 0.7, 0.8, 1,
                                  1,
                                  0.8, 0.6, 0.5, 0.4, 0.3]
-    # _storage_load_diagram = [1, 1, 1, 1, 1, 1, 1, 0, 0, -1, -1, -1, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0.2, 1, 1]
-    _storage_load_diagram = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0.2, 1]
+    _storage_load_diagram = [1, 1, 1, 1, 1, 1, 1, 0, 0, -1, -1, -1, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0.2, 1, 1]
+    # _storage_load_diagram = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0.2, 1]
+    # _storage_load_diagram = [1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1]
     _electricity_price = [1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 10, 10, 10, 10, 10, 10, 10, 10]
     _solar_production = [0, 0, 0, 0, 0, 0, 0.5, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.5, 0, 0, 0, 0, 0, 0]
     _energy_storage = _create_energy_storage()
@@ -21,6 +22,7 @@ def create_dataset():
         columns=['Date time', 'Electricity price', 'Solar Production', 'Consumption Load', 'Storage Load',
                  'State of charge', 'Days in idle', 'Number of cycles', 'Capacity fade'])
     index = 0
+    sum_fade = 0
     for single_datetime in _date_range(_start_datetime, _end_datetime, delta=timedelta(hours=1)):
         _df.loc[index] = [single_datetime,
                           _electricity_price[single_datetime.hour],
@@ -30,13 +32,17 @@ def create_dataset():
                           _energy_storage.energyStorageState.soc / _energy_storage.max_e_mwh,
                           _energy_storage.energyStorageState.days_in_idle,
                           _energy_storage.energyStorageState.no_of_cycles,
-                          (1 - (_energy_storage.energyStorageState.get_idle_fade()
-                                + _energy_storage.energyStorageState.get_cycle_fade()))]
+                          (1 - _energy_storage.energyStorageState.capacity_fade)]
         _storage_load = _energy_storage.max_p_kw * _storage_load_diagram[single_datetime.hour]
-        _energy_storage.send_action(_storage_load)
+        x, y, t = _energy_storage.send_action(_storage_load)
         index = index + 1
-        if single_datetime.month == 1 and single_datetime.day == 1 and single_datetime.hour == 1:
+        if single_datetime.month == 1 and single_datetime.day == 1 and single_datetime.hour == 0:
             print(single_datetime)
+        # if single_datetime.hour != 23:
+        #     sum_fade += t
+        # else:
+        #     print('hour: ', single_datetime.hour, 'capacity fade: ', sum_fade * 10000)
+        #     sum_fade = 0
 
     _save_energy_storage_df_to_csv(_df)
 
@@ -51,7 +57,7 @@ def _date_range(start_date, end_date, delta=timedelta(days=1)):
 def _create_energy_storage():
     network_manager = nm.NetworkManagement()
     power_flow = PowerFlow(network_manager)
-    return EnergyStorage(0, network_manager.power_grid, power_flow)
+    return EnergyStorage(1, network_manager.power_grid, power_flow)
 
 
 def _save_energy_storage_df_to_csv(df):

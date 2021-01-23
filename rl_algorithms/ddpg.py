@@ -295,7 +295,7 @@ class DDPGAgent:
             df_test_day = df_test[(df_test.index >= day_start_time) & (df_test.index < day_start_time + 24)]
             
             done = False
-            state = self.environment.reset(first_row.iloc[0])
+            state = self.environment.reset(day_starts.iloc[0])
             total_episode_reward = 0
             #todo neka ove promjenljive budu ukupne snage u mrezi u aps. jedinicama
             solar_powers = []

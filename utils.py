@@ -12,7 +12,8 @@ def load_dataset():
     return df
 
 
-def split_dataset(df, split_index):
+def split_dataset(df, split_percentage):
+    split_index = int(df.index.size / 24 * split_percentage) * 24 - 1
     df_train = df[df.index <= split_index]
     df_test = df[df.index > split_index]
 

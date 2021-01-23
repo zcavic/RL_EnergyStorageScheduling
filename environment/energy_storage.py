@@ -11,13 +11,13 @@ class EnergyStorage:
         self.max_p_kw = self.power_grid.storage.p_mw.loc[index]
         self.max_e_mwh = self.power_grid.storage.max_e_mwh.loc[index]
         if initial_power < 0:
-            self.energyStorageState = DischargingState(self, initial_soc, days_in_idle, no_of_cycles)
+            self.energyStorageState = DischargingState(self, initial_soc, days_in_idle, no_of_cycles, 0)
             self.energyStorageState.set_power(initial_power)
         elif initial_power > 0:
-            self.energyStorageState = ChargingState(self, initial_soc, days_in_idle, no_of_cycles)
+            self.energyStorageState = ChargingState(self, initial_soc, days_in_idle, no_of_cycles, 0)
             self.energyStorageState.set_power(initial_power)
         else:
-            self.energyStorageState = IdleState(self, initial_soc, days_in_idle, no_of_cycles)
+            self.energyStorageState = IdleState(self, initial_soc, days_in_idle, no_of_cycles, 0)
 
     def state(self):
         return self.energyStorageState.state()
@@ -27,6 +27,7 @@ class EnergyStorage:
 
     def send_action(self, action):
         # chek for overcharging or overdischarging
+        capacity_fade_delta = self.energyStorageState.capacity_fade
         eps = 0.01
         if action - eps < -self.energyStorageState.soc or \
                 action + eps > (self.max_e_mwh - self.energyStorageState.soc):
@@ -42,25 +43,28 @@ class EnergyStorage:
             self.energyStorageState.turn_off()
 
         can_execute = True
-        actual_action = self.energyStorageState.power
+        actual_action = self.energyStorageState.power / self.max_p_kw
         if actual_action == 0 and action != 0:
             can_execute = False
 
         self.energyStorageState.update_soc()
-        self.power_grid.storage.scaling.loc[self.id] = self.energyStorageState.power / self.max_p_kw
+        self.energyStorageState.update_capacity_fade()
+        self.power_grid.storage.scaling.loc[self.id] = actual_action
         self.power_flow.calculate_power_flow()
+        capacity_fade_delta = self.energyStorageState.capacity_fade - capacity_fade_delta
 
-        return actual_action, can_execute
+        return actual_action, can_execute, capacity_fade_delta
 
 
 class EnergyStorageState:
 
-    def __init__(self, energy_storage, initial_soc, days_in_idle, no_of_cycles):
+    def __init__(self, energy_storage, initial_soc, days_in_idle, no_of_cycles, capacity_fade):
         self._energy_storage = energy_storage
         self.soc = initial_soc
         self.power = 0
         self.days_in_idle = days_in_idle
         self.no_of_cycles = no_of_cycles
+        self.capacity_fade = capacity_fade
 
     def state(self):
         return
@@ -75,6 +79,9 @@ class EnergyStorageState:
         return
 
     def update_soc(self):
+        return
+
+    def update_capacity_fade(self):
         return
 
     def set_power(self, power):
@@ -95,6 +102,11 @@ class EnergyStorageState:
         soc = self.soc / self._energy_storage.max_e_mwh
         return 0.000112 * math.exp(0.7388 * soc) * (self.days_in_idle ** 0.8)
 
+    def get_capacity_fade_for_100_percent_soc(self):
+        idle_fade = 0.000112 * math.exp(0.7388 * 0.7) * (self.days_in_idle ** 0.8)
+        cycle_fade = 0.00568 * math.exp(-1.943 * 0.7) * (0.3 ** 0.7162) * math.sqrt(self.no_of_cycles)
+        return idle_fade + cycle_fade
+
 
 class IdleState(EnergyStorageState):
 
@@ -106,7 +118,7 @@ class IdleState(EnergyStorageState):
         if self.soc < self.get_actual_max_capacity():
             # print('Idle state: start charging.')
             self._energy_storage.energyStorageState = ChargingState(self._energy_storage, self.soc,
-                                                                    self.days_in_idle, self.no_of_cycles)
+                                                                    self.days_in_idle, self.no_of_cycles, self.capacity_fade)
             self._energy_storage.energyStorageState.set_power(power)
 
     # command for discharge
@@ -114,7 +126,7 @@ class IdleState(EnergyStorageState):
         if self.soc != 0:
             # print('Idle state: start discharging.')
             self._energy_storage.energyStorageState = DischargingState(self._energy_storage, self.soc,
-                                                                       self.days_in_idle, self.no_of_cycles)
+                                                                       self.days_in_idle, self.no_of_cycles, self.capacity_fade)
             self._energy_storage.energyStorageState.set_power(power)
 
     def turn_off(self):
@@ -122,6 +134,10 @@ class IdleState(EnergyStorageState):
 
     def update_soc(self):
         self.days_in_idle = self.days_in_idle + 1 / 24
+
+    def update_capacity_fade(self):
+        _soc = self.soc / self._energy_storage.max_e_mwh
+        self.capacity_fade += (0.000112 * math.exp(0.7388 * _soc) * ((1 / 24) ** 0.8))
 
 
 class ChargingState(EnergyStorageState):
@@ -137,7 +153,7 @@ class ChargingState(EnergyStorageState):
         if self.soc > 0:
             # print('Charging state: start discharging.')
             self._energy_storage.energyStorageState = DischargingState(self._energy_storage, self.soc,
-                                                                       self.days_in_idle, self.no_of_cycles)
+                                                                       self.days_in_idle, self.no_of_cycles, self.capacity_fade)
             self._energy_storage.energyStorageState.set_power(power)
         else:
             # print('Charging state: energy storage is empty and cant be more discharged.')
@@ -147,7 +163,7 @@ class ChargingState(EnergyStorageState):
     def turn_off(self):
         self._energy_storage.energyStorageState = IdleState(self._energy_storage,
                                                             self.soc, self.days_in_idle,
-                                                            self.no_of_cycles)
+                                                            self.no_of_cycles, self.capacity_fade)
         # print('Charging state: energy storage turned off.')
 
     # 1h elapsed
@@ -156,10 +172,15 @@ class ChargingState(EnergyStorageState):
             self.soc = self.get_actual_max_capacity()
             self._energy_storage.energyStorageState = IdleState(self._energy_storage,
                                                                 self.soc, self.days_in_idle,
-                                                                self.no_of_cycles)
+                                                                self.no_of_cycles, self.capacity_fade)
         else:
             self.soc = self.soc + self.power
         self.no_of_cycles += abs(self.power / self._energy_storage.max_e_mwh) / 2
+
+    def update_capacity_fade(self):
+        _soc = self.soc / self._energy_storage.max_e_mwh
+        self.capacity_fade += (0.00568 * math.exp(-1.943 * _soc) * ((1-_soc) ** 0.7162) *
+                              math.sqrt(abs(self.power / self._energy_storage.max_e_mwh) / 2))
 
 
 class DischargingState(EnergyStorageState):
@@ -172,7 +193,7 @@ class DischargingState(EnergyStorageState):
         if self.soc < self.get_actual_max_capacity():
             self._energy_storage.energyStorageState = ChargingState(self._energy_storage,
                                                                     self.soc, self.days_in_idle,
-                                                                    self.no_of_cycles)
+                                                                    self.no_of_cycles, self.capacity_fade)
             self._energy_storage.energyStorageState.set_power(power)
             # print('Discharging state: stat charging.')
         else:
@@ -187,7 +208,7 @@ class DischargingState(EnergyStorageState):
     def turn_off(self):
         self._energy_storage.energyStorageState = IdleState(self._energy_storage,
                                                             self.soc, self.days_in_idle,
-                                                            self.no_of_cycles)
+                                                            self.no_of_cycles, self.capacity_fade)
         # print('Discharging state: energy storage turned off.')
 
     # 1h elapsed
@@ -196,11 +217,15 @@ class DischargingState(EnergyStorageState):
             self.soc = 0
             self._energy_storage.energyStorageState = IdleState(self._energy_storage,
                                                                 self.soc, self.days_in_idle,
-                                                                self.no_of_cycles)
+                                                                self.no_of_cycles, self.capacity_fade)
         else:
             self.soc = self.soc + self.power
         self.no_of_cycles += abs(self.power / self._energy_storage.max_e_mwh) / 2
 
+    def update_capacity_fade(self):
+        _soc = self.soc / self._energy_storage.max_e_mwh
+        self.capacity_fade += (0.00568 * math.exp(-1.943 * _soc) * ((1-_soc) ** 0.7162) *
+                              math.sqrt(abs(self.power / self._energy_storage.max_e_mwh) / 2))
 
 class State(Enum):
     IDLE = 1

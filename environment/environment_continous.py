@@ -1,14 +1,10 @@
 import gym
 from gym import spaces
-import random
 import numpy as np
 from power_algorithms.power_flow import PowerFlow
 import power_algorithms.network_management as nm
-from gym.spaces import Tuple
 from gym.spaces.space import Space
 from environment.energy_storage import EnergyStorage
-
-
 # Custom space
 from utils import get_scaling_from_row, get_energy_storage_state
 
@@ -85,12 +81,15 @@ class EnvironmentContinous(gym.Env):
 
     def step(self, action, solar_percents, load_percents, electricity_price):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, can_execute = self.energy_storage.send_action(action[0])
+        actual_action, can_execute, capacity_fade_delta = self.energy_storage.send_action(action[0])
         # self.network_manager.set_storage_scaling(action, self.agent_index)
 
         next_state = self._update_state()
-        reward = self.calculate_reward(actual_action, can_execute)
         done = self.timestep == 24
+        start = self.timestep == 1
+
+        reward = self.calculate_reward(actual_action, can_execute, capacity_fade_delta)
+
 
         # sljedeci trenutak
         self.network_manager.set_scaling_to_all_generation(solar_percents[0])
@@ -98,9 +97,13 @@ class EnvironmentContinous(gym.Env):
         self.electricity_price_this_moment = electricity_price[0]
         return next_state, reward, done, actual_action, initial_soc
 
-    def calculate_reward(self, actual_action, can_execute):
+    def calculate_reward(self, actual_action, can_execute, capacity_fade_delta):
         if can_execute:
-            return - self.electricity_price_this_moment * actual_action
+            electricity_price = self.electricity_price_this_moment * actual_action
+            capacity_fade = capacity_fade_delta * 1000
+            if electricity_price == 0:
+                print('electricity price reward: ', electricity_price, 'capacity fade reward: ', capacity_fade)
+            return - (electricity_price + capacity_fade)
         else:
             return - 10
 
