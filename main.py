@@ -1,6 +1,5 @@
-from dataset.dataset_helper_storage import create_dataset
-from environment.environment_continous import EnvironmentContinous
-from rl_algorithms.ddpg import DDPGAgent
+from _New.ddpg_lite import DDPGAgentLite
+from _New.environment_ddpg import EnvironmentDDPG
 import time
 from utils import load_dataset, split_dataset
 
@@ -9,25 +8,25 @@ def main():
     # only when want to change something
     # create_dataset()
 
-    # dataset contains power injection of nodes
+    # Environment
+    environment = EnvironmentDDPG()
+
+    # Agent
+    agent = DDPGAgentLite(environment)
+
+    _start_agent(agent)
+
+
+def _start_agent(agent):
+    # Dataset
     df = load_dataset()
     df_train, df_test = split_dataset(df, 0.9)
-
-    # environment shouldn't have the entire dataset as an input parameter, but train and test methods
-    # environment_discrete = EnvironmentDiscrete()
-    environment_continuous = EnvironmentContinous()
-
-    print('=====================agent=====================')
-    # agent = DeepQLearningAgent(environment_discrete)
-    agent = DDPGAgent(environment_continuous)
-
     n_episodes = 1000
     print('agent training started')
     t1 = time.time()
     agent.train(df_train, n_episodes)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
-
     agent.test(df_test)
 
 
