@@ -16,7 +16,7 @@ class EnvironmentDDPG(gym.Env, ABC):
 
     def step(self, action):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, can_execute = self.energy_storage.send_action(action)
+        actual_action, can_execute = self.energy_storage.send_action(action[0])
         next_state = self._update_state()
         done = self.time_step == 24
         reward = self.calculate_reward(actual_action, can_execute)

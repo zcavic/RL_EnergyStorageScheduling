@@ -118,14 +118,14 @@ class DDPGAgentLite:
             # prvi red (i = 0) je gore sluzio za inicijalno stanje
             # trenutni red se koristi da se dobave scaling vrijednosti za sljedeci timestep
             # za i = len(df_train_day) ce next_state biti None, done = True, ali i tada hocemo da odradimo environment.step
-            for next_timestep_idx in range(1, len(df_train_day) + 1):
+            for next_time_step_idx in range(1, len(df_train_day) + 1):
                 state = np.asarray(state)
                 action = self.get_action(state)
                 action = self.noise.get_action(action, self.timestamp)
                 if abs(action) > 1.0:
                     print('Warning: ddpg_lite.py.train - abs(action) > 1')
 
-                next_state, reward, done, _, _ = self.environment.step(action[0])
+                next_state, reward, done, _, _ = self.environment.step(action)
                 total_episode_reward += reward
                 self.timestamp += 1
 
@@ -135,7 +135,7 @@ class DDPGAgentLite:
 
                 state = next_state
 
-                if next_timestep_idx != self.environment.time_step:
+                if next_time_step_idx != self.environment.time_step:
                     print('Warning: ddpg_lite.py.train - something may be wrong with timestep indexing')
 
             if i_episode == 0:

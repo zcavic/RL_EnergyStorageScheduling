@@ -21,7 +21,7 @@ def _start_agent(agent):
     # Dataset
     df = load_dataset()
     df_train, df_test = split_dataset(df, 0.9)
-    n_episodes = 1000
+    n_episodes = 50
     print('agent training started')
     t1 = time.time()
     agent.train(df_train, n_episodes)
