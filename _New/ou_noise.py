@@ -2,7 +2,7 @@ import numpy as np
 
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.7, min_sigma=0.7, decay_period=100):
+    def __init__(self, action_space, mu=0.0, theta=0.05, max_sigma=0.15, min_sigma=0.15, decay_period=100):
         self.mu = mu
         self.theta = theta
         self.sigma = max_sigma
@@ -25,6 +25,6 @@ class OUNoise(object):
         return self.state
 
     def get_action(self, action, t=0):
-        ou_state = self.evolve_state()
-        self.sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(1.0, t / self.decay_period)
+        ou_state = self.evolve_state() #dodavanje suma na gausovu raspodelu
+        self.sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(1.0, t / self.decay_period) #definise ou slucajni proces
         return np.clip(action + ou_state, self.low, self.high)

@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from abc import ABC
 from gym import spaces
-from _New.electricity_price_provider import get_electricity_price_for
+from _New.model_data_provider import get_electricity_price_for, get_power_consumption_for
 from _New.energy_storage_factory import create_energy_storage, create_energy_storage_from_dataset
 
 
@@ -19,19 +19,19 @@ class EnvironmentDDPG(gym.Env, ABC):
         actual_action, can_execute = self.energy_storage.send_action(action[0])
         next_state = self._update_state()
         done = self.time_step == 24
-        reward = self.calculate_reward(actual_action, can_execute)
+        reward = self._calculate_reward(actual_action, can_execute)
         return next_state, reward, done, actual_action, initial_soc
 
-    def calculate_reward(self, actual_action, can_execute):
+    def reset(self):
+        self.energy_storage = create_energy_storage()
+        self._define_init_state()
+        return self.state
+
+    def _calculate_reward(self, actual_action, can_execute):
         if can_execute:
             return -get_electricity_price_for(self.time_step) * actual_action
         else:
-            return -90
-
-    def reset(self, dataset_row):
-        self.energy_storage = create_energy_storage_from_dataset(dataset_row)
-        self._define_init_state()
-        return self.state
+            return -20
 
     def _update_state(self):
         self.state = []

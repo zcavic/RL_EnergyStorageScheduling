@@ -9,13 +9,13 @@ from torch.autograd import Variable
 from _New.action import reverse_action_tensor, reverse_action
 from _New.actor import Actor
 from _New.critic import Critic
-from _New.electricity_price_provider import get_electricity_price
+from _New.model_data_provider import get_electricity_price
 from _New.ou_noise import OUNoise
 from _New.replay_buffer import ReplayBuffer
 
 
 class DDPGAgentLite:
-    def __init__(self, environment, hidden_size=128, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0,
+    def __init__(self, environment, hidden_size=32, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0,
                  tau=1e-3, max_memory_size=600000):
         self.environment = environment
         self.num_states = environment.state_space_dims
@@ -44,7 +44,7 @@ class DDPGAgentLite:
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
         self.noise = OUNoise(self.environment.action_space)
 
-    def train(self, df_train, n_episodes):
+    def train(self, n_episodes):
         total_episode_rewards = []
         self.moving_average = 0.0
         for i_episode in range(n_episodes):
@@ -54,8 +54,7 @@ class DDPGAgentLite:
                 self.noise.min_sigma = 0.3
                 self.noise.max_sigma = 0.3
 
-            df_train_day = select_random_day(df_train)
-            state = self.environment.reset(df_train_day.iloc[0])
+            state = self.environment.reset()
 
             self.noise.reset()
             total_episode_reward = 0
@@ -64,7 +63,7 @@ class DDPGAgentLite:
             # prvi red (i = 0) je gore sluzio za inicijalno stanje
             # trenutni red se koristi da se dobave scaling vrijednosti za sljedeci timestep
             # za i = len(df_train_day) ce next_state biti None, done = True, ali i tada hocemo da odradimo environment.step
-            for next_time_step_idx in range(1, len(df_train_day) + 1):
+            for next_time_step_idx in range(1, 25):
                 state = np.asarray(state)
                 action = self._get_action(state)
                 action = self.noise.get_action(action, self.timestamp)
@@ -93,9 +92,6 @@ class DDPGAgentLite:
             if i_episode % 20 == 0:
                 print("total_episode_reward: ", total_episode_reward)
 
-            if i_episode % 1000 == 999:
-                time.sleep(60)
-
             if i_episode % 20 == 0:
                 torch.save(self.actor.state_dict(), "./trained_nets/model_actor" + str(i_episode))
 
@@ -109,40 +105,34 @@ class DDPGAgentLite:
         plt.savefig("total_episode_rewards.png")
         plt.show()
 
-    def test(self, df_test):
+    def test(self):
         print('agent testing started')
         self.actor.load_state_dict(torch.load("model_actor"))
         self.actor.eval()
 
-        day_starts = extract_day_starts(df_test)
-        day_start_times = list(day_starts.index)
-        for day_start_time in day_start_times:
-            df_test_day = df_test[(df_test.index >= day_start_time) & (df_test.index < day_start_time + 24)]
+        state = self.environment.reset()
+        total_episode_reward = 0
+        proposed_storage_powers = []
+        actual_storage_powers = []
+        storage_socs = []
 
-            state = self.environment.reset(day_starts.iloc[0])
+        for next_time_step_idx in range(1, 25):
+            state = np.asarray(state)
+            action = self._get_action(state)
+            proposed_storage_powers.append(action)
+            if abs(action) > 1.0:
+                print('Warning: deep_q_learning.train - abs(action) > 1')
 
-            total_episode_reward = 0
-            proposed_storage_powers = []
-            actual_storage_powers = []
-            storage_socs = []
+            next_state, reward, done, actual_action, initial_soc = self.environment.step(action=action)
 
-            for next_time_step_idx in range(1, len(df_test_day) + 1):
-                state = np.asarray(state)
-                action = self._get_action(state)
-                proposed_storage_powers.append(action)
-                if abs(action) > 1.0:
-                    print('Warning: deep_q_learning.train - abs(action) > 1')
+            actual_storage_powers.append(actual_action)
+            storage_socs.append(initial_soc)
 
-                next_state, reward, done, actual_action, initial_soc = self.environment.step(action=action)
-
-                actual_storage_powers.append(actual_action)
-                storage_socs.append(initial_soc)
-
-                total_episode_reward += reward
-                state = next_state
+            total_episode_reward += reward
+            state = next_state
 
         print('total_episode_reward', total_episode_reward)
-        plot_daily_results(int(day_start_time / 24 + 1), proposed_storage_powers, actual_storage_powers, storage_socs,
+        plot_daily_results(24, proposed_storage_powers, actual_storage_powers, storage_socs,
                            get_electricity_price())
 
     def _update(self):
