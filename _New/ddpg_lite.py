@@ -1,15 +1,17 @@
 import torch
 import torch.nn as nn
-import random
 import time
 import torch.optim as optim
 import torch.autograd
 import numpy as np
-from torch.autograd import Variable
-from collections import deque
-
-from _New.electricity_price_provider import get_electricity_price
 from utils import *
+from torch.autograd import Variable
+from _New.action import reverse_action_tensor, reverse_action
+from _New.actor import Actor
+from _New.critic import Critic
+from _New.electricity_price_provider import get_electricity_price
+from _New.ou_noise import OUNoise
+from _New.replay_buffer import ReplayBuffer
 
 
 class DDPGAgentLite:
@@ -22,9 +24,7 @@ class DDPGAgentLite:
         self.tau = tau
         self.timestamp = 0
         self.moving_average = 0
-
         self.batch_size = 256
-
         self.actor = Actor(self.num_states, hidden_size, self.num_actions)
         self.actor_target = Actor(self.num_states, hidden_size, self.num_actions)
         self.actor.train()
@@ -42,66 +42,14 @@ class DDPGAgentLite:
         self.critic_criterion = nn.MSELoss()
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
-
         self.noise = OUNoise(self.environment.action_space)
 
-    def get_action(self, state):
-        state = Variable(torch.from_numpy(state).float().unsqueeze(0))
-        self.actor.eval()
-        action = self.actor.forward(state)
-        self.actor.train()
-        action = action.detach().cpu().numpy()[0, 0]
-        # output from actor network is normalized so:
-        action = reverse_action(action, self.environment.action_space)
-        return action
-
-    def update(self):
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
-        states = torch.FloatTensor(states)
-        actions = torch.FloatTensor(actions)
-        rewards = torch.FloatTensor(rewards)
-        next_states = torch.FloatTensor(next_states)
-        dones = torch.FloatTensor(dones).unsqueeze(1)
-        # print('states', states)
-        # print('actions', actions)
-
-        Qvals = self.critic.forward(states, actions)
-        next_actions = self.actor_target.forward(next_states)
-        # output from actor network is normalized so:
-        next_actions = reverse_action_tensor(next_actions, self.environment.action_space)
-
-        next_Q = self.critic_target.forward(next_states, next_actions.detach())
-        Qprime = rewards + (1.0 - dones) * self.gamma * next_Q
-        critic_loss = self.critic_criterion(Qvals, Qprime.detach())
-
-        # actor loss
-        next_actions_pol_loss = self.actor.forward(states)
-        next_actions_pol_loss = reverse_action_tensor(next_actions_pol_loss, self.environment.action_space)
-        policy_loss = -self.critic.forward(states, next_actions_pol_loss).mean()
-
-        self.actor_optimizer.zero_grad()
-        policy_loss.backward()
-        self.actor_optimizer.step()
-
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
-
-        for target_param, param in zip(self.actor_target.parameters(), self.actor.parameters()):
-            target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
-
-        for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
-            target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
-
     def train(self, df_train, n_episodes):
-        # self.actor.load_state_dict(torch.load("model_actor"))
-        # self.critic.load_state_dict(torch.load("model_critic"))
         total_episode_rewards = []
         self.moving_average = 0.0
         for i_episode in range(n_episodes):
             if i_episode % 20 == 0:
                 print("Episode: ", i_episode)
-
             if i_episode == 10000:
                 self.noise.min_sigma = 0.3
                 self.noise.max_sigma = 0.3
@@ -110,8 +58,6 @@ class DDPGAgentLite:
             state = self.environment.reset(df_train_day.iloc[0])
 
             self.noise.reset()
-            done = False
-            episode_iterator = 0
             total_episode_reward = 0
             self.timestamp = 0
 
@@ -120,7 +66,7 @@ class DDPGAgentLite:
             # za i = len(df_train_day) ce next_state biti None, done = True, ali i tada hocemo da odradimo environment.step
             for next_time_step_idx in range(1, len(df_train_day) + 1):
                 state = np.asarray(state)
-                action = self.get_action(state)
+                action = self._get_action(state)
                 action = self.noise.get_action(action, self.timestamp)
                 if abs(action) > 1.0:
                     print('Warning: ddpg_lite.py.train - abs(action) > 1')
@@ -131,7 +77,7 @@ class DDPGAgentLite:
 
                 self.replay_buffer.push(state, action, reward, next_state, done)
                 if len(self.replay_buffer) > self.batch_size:
-                    self.update()
+                    self._update()
 
                 state = next_state
 
@@ -152,7 +98,6 @@ class DDPGAgentLite:
 
             if i_episode % 20 == 0:
                 torch.save(self.actor.state_dict(), "./trained_nets/model_actor" + str(i_episode))
-                # torch.save(self.critic.state_dict(), "./trained_nets/model_critic"+str(i_episode))
 
         torch.save(self.actor.state_dict(), "model_actor")
         torch.save(self.critic.state_dict(), "model_critic")
@@ -183,7 +128,7 @@ class DDPGAgentLite:
 
             for next_time_step_idx in range(1, len(df_test_day) + 1):
                 state = np.asarray(state)
-                action = self.get_action(state)
+                action = self._get_action(state)
                 proposed_storage_powers.append(action)
                 if abs(action) > 1.0:
                     print('Warning: deep_q_learning.train - abs(action) > 1')
@@ -200,128 +145,47 @@ class DDPGAgentLite:
         plot_daily_results(int(day_start_time / 24 + 1), proposed_storage_powers, actual_storage_powers, storage_socs,
                            get_electricity_price())
 
+    def _update(self):
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        states = torch.FloatTensor(states)
+        actions = torch.FloatTensor(actions)
+        rewards = torch.FloatTensor(rewards)
+        next_states = torch.FloatTensor(next_states)
+        dones = torch.FloatTensor(dones).unsqueeze(1)
+        Qvals = self.critic.forward(states, actions)
+        next_actions = self.actor_target.forward(next_states)
+        # output from actor network is normalized so:
+        next_actions = reverse_action_tensor(next_actions, self.environment.action_space)
 
-class Critic(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(Critic, self).__init__()
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, hidden_size)
-        self.linear4 = nn.Linear(hidden_size, output_size)
+        next_Q = self.critic_target.forward(next_states, next_actions.detach())
+        Qprime = rewards + (1.0 - dones) * self.gamma * next_Q
+        critic_loss = self.critic_criterion(Qvals, Qprime.detach())
 
-        init_w = 3e-3
-        self.linear4.weight.data.uniform_(-init_w, init_w)
-        self.linear4.bias.data.uniform_(-init_w, init_w)
+        # actor loss
+        next_actions_pol_loss = self.actor.forward(states)
+        next_actions_pol_loss = reverse_action_tensor(next_actions_pol_loss, self.environment.action_space)
+        policy_loss = -self.critic.forward(states, next_actions_pol_loss).mean()
 
-    def forward(self, state, action):
-        x = torch.cat([state, action], 1)
-        x = torch.relu(self.linear1(x))
-        x = torch.relu(self.linear2(x))
-        x = torch.relu(self.linear3(x))
-        x = self.linear4(x)  # returns q value, should not be limited by tanh
-        return x
+        self.actor_optimizer.zero_grad()
+        policy_loss.backward()
+        self.actor_optimizer.step()
 
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
 
-class Actor(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, learning_rate=3e-4):
-        super(Actor, self).__init__()
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, hidden_size)
-        self.linear4 = nn.Linear(hidden_size, output_size)
+        for target_param, param in zip(self.actor_target.parameters(), self.actor.parameters()):
+            target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
 
-        init_w = 3e-3
-        self.linear4.weight.data.uniform_(-init_w, init_w)
-        self.linear4.bias.data.uniform_(-init_w, init_w)
+        for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
+            target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
 
-    def forward(self, state):
-        x = torch.relu(self.linear1(state))
-        x = torch.relu(self.linear2(x))
-        x = torch.relu(self.linear3(x))
-        x = torch.tanh(self.linear4(x))
-        return x
-
-
-class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.1, max_sigma=0.7, min_sigma=0.7, decay_period=100):
-        self.mu = mu
-        self.theta = theta
-        self.sigma = max_sigma
-        self.max_sigma = max_sigma
-        self.min_sigma = min_sigma
-        self.decay_period = decay_period
-        self.action_dim = action_space.shape[0]
-        self.low = action_space.low
-        self.high = action_space.high
-
-        self.reset()
-
-    def reset(self):
-        self.state = np.ones(self.action_dim) * self.mu
-
-    def evolve_state(self):
-        x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * np.random.randn(self.action_dim)
-        self.state = x + dx
-        return self.state
-
-    def get_action(self, action, t=0):
-        ou_state = self.evolve_state()
-        self.sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(1.0, t / self.decay_period)
-        return np.clip(action + ou_state, self.low, self.high)
-
-
-class ReplayBuffer:
-    def __init__(self, max_size):
-        self.max_size = max_size
-        self.buffer = deque(maxlen=max_size)
-
-    def push(self, state, action, reward, next_state, done):
-        experience = (state, action, np.array([reward]), next_state, done)
-        self.buffer.append(experience)
-
-    def sample(self, batch_size):
-        state_batch = []
-        action_batch = []
-        reward_batch = []
-        next_state_batch = []
-        done_batch = []
-
-        batch = random.sample(self.buffer, batch_size)
-
-        for experience in batch:
-            state, action, reward, next_state, done = experience
-            state_batch.append(state)
-            action_batch.append(action)
-            reward_batch.append(reward)
-            next_state_batch.append(next_state)
-            done_batch.append(done)
-
-        return state_batch, action_batch, reward_batch, next_state_batch, done_batch
-
-    def __len__(self):
-        return len(self.buffer)
-
-
-# scales action from [-1, 1] to [action_space.low, action_space.high]
-def reverse_action(action, action_space):
-    act_k = (action_space.high - action_space.low) / 2.
-    act_b = (action_space.high + action_space.low) / 2.
-    return act_k * action + act_b
-
-
-# scales action from [action_space.low, action_space.high] to [-1, 1]
-def normalize_action(action, action_space):
-    act_k_inv = 2. / (action_space.high - action_space.low)
-    act_b = (action_space.high + action_space.low) / 2.
-    return act_k_inv * (action - act_b)
-
-
-# scales action tensor from [-1, 1] to [action_space.low, action_space.high]
-def reverse_action_tensor(action, action_space):
-    high = np.asscalar(action_space.high)
-    low = np.asscalar(action_space.low)
-    act_k = (high - low) / 2.
-    act_b = (high + low) / 2.
-    act_b_tensor = act_b * torch.ones(action.shape)
-    return act_k * action + act_b_tensor
+    def _get_action(self, state):
+        state = Variable(torch.from_numpy(state).float().unsqueeze(0))
+        self.actor.eval()
+        action = self.actor.forward(state)
+        self.actor.train()
+        action = action.detach().cpu().numpy()[0, 0]
+        # output from actor network is normalized so:
+        action = reverse_action(action, self.environment.action_space)
+        return action

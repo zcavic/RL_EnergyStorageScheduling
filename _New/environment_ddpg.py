@@ -24,9 +24,9 @@ class EnvironmentDDPG(gym.Env, ABC):
 
     def calculate_reward(self, actual_action, can_execute):
         if can_execute:
-            return get_electricity_price_for(self.time_step) * actual_action
+            return -get_electricity_price_for(self.time_step) * actual_action
         else:
-            return -10
+            return -90
 
     def reset(self, dataset_row):
         self.energy_storage = create_energy_storage_from_dataset(dataset_row)

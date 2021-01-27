@@ -3,7 +3,7 @@ import math
 
 class EnergyStorageLite:
 
-    def __init__(self, max_p_mw, max_e_mwh, initial_power=0, initial_soc=1, capacity_fade=0):
+    def __init__(self, max_p_mw, max_e_mwh, initial_power=0, initial_soc=0, capacity_fade=0):
 
         self.max_p_mw = max_p_mw
         self.max_e_mwh = max_e_mwh
