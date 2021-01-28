@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import time
 import torch.optim as optim
 import torch.autograd
 import numpy as np
@@ -9,7 +8,6 @@ from torch.autograd import Variable
 from _New.action import reverse_action_tensor, reverse_action
 from _New.actor import Actor
 from _New.critic import Critic
-from _New.model_data_provider import get_electricity_price
 from _New.ou_noise import OUNoise
 from _New.replay_buffer import ReplayBuffer
 
@@ -133,7 +131,7 @@ class DDPGAgentLite:
 
         print('total_episode_reward', total_episode_reward)
         plot_daily_results(24, proposed_storage_powers, actual_storage_powers, storage_socs,
-                           get_electricity_price())
+                           self.environment.model_data_provider.get_electricity_price())
 
     def _update(self):
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)

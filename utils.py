@@ -6,8 +6,12 @@ from environment.energy_storage import ChargingState, DischargingState, IdleStat
 
 
 def load_dataset():
+    return load_dataset('./dataset/energy_storage_dataset.csv')
+
+
+def load_dataset(path):
     script_dir = os.path.dirname(__file__)
-    file_path = os.path.join(script_dir, './dataset/energy_storage_dataset.csv')
+    file_path = os.path.join(script_dir, path)
     df = pd.read_csv(file_path, index_col=0)
     return df
 

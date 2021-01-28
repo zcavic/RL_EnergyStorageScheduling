@@ -15,7 +15,7 @@ def main():
     # _test_energy_storage_4()
 
     # Environment
-    environment = EnvironmentDDPG()
+    environment = EnvironmentDDPG('./dataset/Test1.csv')
 
     # Agent
     agent = DDPGAgentLite(environment)
@@ -24,10 +24,7 @@ def main():
 
 
 def _start_agent(agent):
-    # Dataset
-    df = load_dataset()
-    df_train, df_test = split_dataset(df, 0.9)
-    n_episodes = 10000
+    n_episodes = 1000
     print('agent training started')
     t1 = time.time()
     agent.train(n_episodes)
