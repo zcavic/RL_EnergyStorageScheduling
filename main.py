@@ -1,36 +1,26 @@
 from _New.ddpg_lite import DDPGAgentLite
-from _New.energy_storage_lite import EnergyStorageLite, ChargingState, _test_energy_storage1, _test_energy_storage_2, \
-    _test_energy_storage_3, _test_energy_storage_4
 from _New.environment_ddpg import EnvironmentDDPG
 import time
-from utils import load_dataset, split_dataset
+from utils import _get_ddpg_conif
 
 
 def main():
-    # only when want to change something
-    # create_dataset()
-    # _test_energy_storage1()
-    # _test_energy_storage_2()
-    # _test_energy_storage_3()
-    # _test_energy_storage_4()
-
-    # Environment
+    n_episodes = 1000
     environment = EnvironmentDDPG('./dataset/Test1.csv')
 
-    # Agent
-    agent = DDPGAgentLite(environment)
+    hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size = _get_ddpg_conif('rl_config.xml')
+    agent = DDPGAgentLite(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size)
+    _start_agent(agent, n_episodes)
 
-    _start_agent(agent)
 
-
-def _start_agent(agent):
-    n_episodes = 1000
+def _start_agent(agent, n_episodes):
     print('agent training started')
     t1 = time.time()
     agent.train(n_episodes)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
     agent.test()
+
 
 
 if __name__ == '__main__':

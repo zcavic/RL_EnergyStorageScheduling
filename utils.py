@@ -1,4 +1,6 @@
 import os
+from xml.dom import minidom
+
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -89,3 +91,32 @@ def plot_daily_results(day_id, proposed_storage_powers, actual_storage_powers, s
 
     fig.savefig(str(day_id) + '_day_resuts.png')
     plt.show()
+
+
+def _get_ddpg_conif(config_path):
+    hidden_size = 128
+    actor_learning_rate = 1e-5
+    critic_learning_rate = 1e-4
+    gamma = 1.0
+    tau = 1e-3
+    max_memory_size = 600000
+
+    xml_doc = minidom.parse(config_path)
+    alg_list = xml_doc.getElementsByTagName('Algorithm')
+    for alg in alg_list:
+        if alg.attributes['Name'].value == "DDPG":
+            for config in alg.childNodes:
+                if config.nodeName == 'hidden_size':
+                    hidden_size = config.firstChild.nodeValue;
+                if config.nodeName == 'actor_learning_rate':
+                    actor_learning_rate = config.firstChild.nodeValue;
+                if config.nodeName == 'critic_learning_rate':
+                    critic_learning_rate = config.firstChild.nodeValue;
+                if config.nodeName == 'gamma':
+                    gamma = config.firstChild.nodeValue;
+                if config.nodeName == 'tau':
+                    tau = config.firstChild.nodeValue;
+                if config.nodeName == 'max_memory_size':
+                    max_memory_size = config.firstChild.nodeValue;
+
+    return int(hidden_size), float(actor_learning_rate), float(critic_learning_rate), float(gamma), float(tau), int(max_memory_size)

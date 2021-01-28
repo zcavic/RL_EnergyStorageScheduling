@@ -1,0 +1,10 @@
+<RL>
+	<Algorithm Name="DDPG">
+		<hidden_size>128</hidden_size >
+		<actor_learning_rate>0.00001</actor_learning_rate >
+		<critic_learning_rate>0.0001</critic_learning_rate >
+		<gamma>1</gamma >
+		<tau>0.001</tau >
+		<max_memory_size>600000</max_memory_size >
+	</Algorithm>
+</RL>
