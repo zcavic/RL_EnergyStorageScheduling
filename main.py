@@ -1,4 +1,6 @@
 from _New.ddpg_lite import DDPGAgentLite
+from _New.energy_storage_lite import EnergyStorageLite, ChargingState, _test_energy_storage1, _test_energy_storage_2, \
+    _test_energy_storage_3, _test_energy_storage_4
 from _New.environment_ddpg import EnvironmentDDPG
 import time
 from utils import load_dataset, split_dataset
@@ -7,6 +9,10 @@ from utils import load_dataset, split_dataset
 def main():
     # only when want to change something
     # create_dataset()
+    # _test_energy_storage1()
+    # _test_energy_storage_2()
+    # _test_energy_storage_3()
+    # _test_energy_storage_4()
 
     # Environment
     environment = EnvironmentDDPG()

@@ -15,7 +15,7 @@ from _New.replay_buffer import ReplayBuffer
 
 
 class DDPGAgentLite:
-    def __init__(self, environment, hidden_size=32, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0,
+    def __init__(self, environment, hidden_size=128, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0,
                  tau=1e-3, max_memory_size=600000):
         self.environment = environment
         self.num_states = environment.state_space_dims
@@ -48,7 +48,7 @@ class DDPGAgentLite:
         total_episode_rewards = []
         self.moving_average = 0.0
         for i_episode in range(n_episodes):
-            if i_episode % 20 == 0:
+            if i_episode % 50 == 0:
                 print("Episode: ", i_episode)
             if i_episode == 10000:
                 self.noise.min_sigma = 0.3
@@ -89,10 +89,10 @@ class DDPGAgentLite:
             self.moving_average = 0.9 * self.moving_average + 0.1 * total_episode_reward
             total_episode_rewards.append(self.moving_average)
 
-            if i_episode % 20 == 0:
+            if i_episode % 50 == 0:
                 print("total_episode_reward: ", total_episode_reward)
 
-            if i_episode % 20 == 0:
+            if i_episode % 50 == 0:
                 torch.save(self.actor.state_dict(), "./trained_nets/model_actor" + str(i_episode))
 
         torch.save(self.actor.state_dict(), "model_actor")

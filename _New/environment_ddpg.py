@@ -16,7 +16,8 @@ class EnvironmentDDPG(gym.Env, ABC):
 
     def step(self, action):
         initial_soc = self.energy_storage.energyStorageState.soc
-        actual_action, can_execute = self.energy_storage.send_action(action[0])
+        power = action[0] * self.energy_storage.max_p_mw
+        actual_action, can_execute = self.energy_storage.send_action(power)
         next_state = self._update_state()
         done = self.time_step == 24
         reward = self._calculate_reward(actual_action, can_execute)
@@ -28,10 +29,12 @@ class EnvironmentDDPG(gym.Env, ABC):
         return self.state
 
     def _calculate_reward(self, actual_action, can_execute):
+        reward_scaling = 10
+        reward_for_not_executed = -2
         if can_execute:
-            return -get_electricity_price_for(self.time_step) * actual_action
+            return (-get_electricity_price_for(self.time_step) * actual_action)/reward_scaling
         else:
-            return -20
+            return reward_for_not_executed/reward_scaling
 
     def _update_state(self):
         self.state = []

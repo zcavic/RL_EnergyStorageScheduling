@@ -3,7 +3,7 @@ import math
 
 class EnergyStorageLite:
 
-    def __init__(self, max_p_mw, max_e_mwh, initial_power=0, initial_soc=0, capacity_fade=0):
+    def __init__(self, max_p_mw, max_e_mwh, initial_power=0.0, initial_soc=0.0, capacity_fade=0.0):
 
         self.max_p_mw = max_p_mw
         self.max_e_mwh = max_e_mwh
@@ -21,29 +21,44 @@ class EnergyStorageLite:
         return self.energyStorageState.power
 
     def send_action(self, action):
-        # chek for overcharging or overdischarging
-        eps = 0.01
-        if action - eps < -self.energyStorageState.soc or \
-                action + eps > (self.max_e_mwh - self.energyStorageState.soc):
-            self.energyStorageState.turn_off()
-        # negative action is discharging
-        elif action < 0:
-            self.energyStorageState.discharge(action)
-        # positive action is charging
-        elif action > 0:
-            self.energyStorageState.charge(action)
-        # 0 is for turn off
+
+        if self._is_discharging(self._get_action(action)):
+            self.energyStorageState.discharge(self._get_action(action))
+        elif self._is_charging(self._get_action(action)):
+            self.energyStorageState.charge(self._get_action(action))
         else:
             self.energyStorageState.turn_off()
 
         can_execute = True
         actual_action = self.energyStorageState.power / self.max_p_mw
-        if actual_action == 0 and action != 0:
+        if self.energyStorageState.power == 0 and action != 0:
             can_execute = False
 
         self.energyStorageState.update_soc()
 
         return actual_action, can_execute
+
+    # positive action is charging
+    # with eps we check overcharging or overdischarging
+    def _is_charging(self, action, eps=0.05):
+        if action > 0 and (self.energyStorageState.soc + (action / self.max_e_mwh) - eps) < 1:
+            return True
+        else:
+            return False
+
+    # negative action is discharging
+    # with eps we check overcharging or overdischarging
+    def _is_discharging(self, action, eps=0.05):
+        if action < 0 and (self.energyStorageState.soc - (action / self.max_e_mwh) + eps) > 0:
+            return True
+        else:
+            return False
+
+    def _get_action(self, action):
+        if abs(action) > self.max_p_mw:
+            return math.copysign(self.max_p_mw, action)
+        else:
+            return action
 
 
 class EnergyStorageState:
@@ -90,14 +105,13 @@ class IdleState(EnergyStorageState):
 
     # command for charge
     def charge(self, power):
-        if self.soc + (self.power / self._energy_storage.max_e_mwh) < 1:
+        if self.soc < 1:
             self._energy_storage.energyStorageState = ChargingState(self._energy_storage, self.soc)
             self._energy_storage.energyStorageState.set_power(power)
 
     # command for discharge
     def discharge(self, power):
-        if self.soc != 0:
-            # print('Idle state: start discharging.')
+        if self.soc > 0:
             self._energy_storage.energyStorageState = DischargingState(self._energy_storage, self.soc)
             self._energy_storage.energyStorageState.set_power(power)
 
@@ -113,11 +127,9 @@ class ChargingState(EnergyStorageState):
     # command for charge
     def discharge(self, power):
         if self.soc > 0:
-            # print('Charging state: start discharging.')
             self._energy_storage.energyStorageState = DischargingState(self._energy_storage, self.soc)
             self._energy_storage.energyStorageState.set_power(power)
         else:
-            # print('Charging state: energy storage is empty and cant be more discharged.')
             self.turn_off()
 
     # turn off energy storage
@@ -141,3 +153,79 @@ class DischargingState(EnergyStorageState):
     # turn off energy storage
     def turn_off(self):
         self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.soc)
+
+
+def _test_energy_storage1():
+    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=4, initial_soc=0)
+    check = 0
+    es.send_action(1)
+    if math.isclose(es.energyStorageState.soc, 0.25) and math.isclose(es.energyStorageState.power, 1) and type(
+            es.energyStorageState) == ChargingState:
+        check += 1
+    es.send_action(1)
+    if math.isclose(es.energyStorageState.soc, 0.5) and math.isclose(es.energyStorageState.power, 1) and type(
+            es.energyStorageState) == ChargingState:
+        check += 1
+    es.send_action(1)
+    if math.isclose(es.energyStorageState.soc, 0.75) and math.isclose(es.energyStorageState.power, 1) and type(
+            es.energyStorageState) == ChargingState:
+        check += 1
+    es.send_action(1)
+    if math.isclose(es.energyStorageState.soc, 1) and math.isclose(es.energyStorageState.power, 1) and type(
+            es.energyStorageState) == ChargingState:
+        check += 1
+    es.send_action(1)
+    if math.isclose(es.energyStorageState.soc, 1) and math.isclose(es.energyStorageState.power, 0) and type(
+            es.energyStorageState) == IdleState:
+        check += 1
+    es.send_action(-1)
+    if math.isclose(es.energyStorageState.soc, 0.75) and math.isclose(es.energyStorageState.power, -1) and type(
+            es.energyStorageState) == DischargingState:
+        check += 1
+    es.send_action(-1)
+    if math.isclose(es.energyStorageState.soc, 0.5) and math.isclose(es.energyStorageState.power, -1) and type(
+            es.energyStorageState) == DischargingState:
+        check += 1
+    es.send_action(-1)
+    if math.isclose(es.energyStorageState.soc, 0.25) and math.isclose(es.energyStorageState.power, -1) and type(
+            es.energyStorageState) == DischargingState:
+        check += 1
+    es.send_action(-1)
+    if math.isclose(es.energyStorageState.soc, 0) and math.isclose(es.energyStorageState.power, -1) and type(
+            es.energyStorageState) == DischargingState:
+        check += 1
+    if check == 9:
+        print("TEST 1: OK")
+    else:
+        print("TEST 1: FAIL")
+
+
+def _test_energy_storage_2():
+    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=5, initial_soc=0.83)
+    es.send_action(1.2)
+    if math.isclose(es.energyStorageState.soc, 1) and math.isclose(es.energyStorageState.power, 0) and type(
+            es.energyStorageState) == IdleState:
+        print("Test 2: OK")
+    else:
+        print("Test 2: FAIL")
+
+
+def _test_energy_storage_3():
+    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=5, initial_soc=0.18)
+    es.send_action(-1.2)
+    if math.isclose(es.energyStorageState.soc, 0) and math.isclose(es.energyStorageState.power, 0) and type(
+            es.energyStorageState) == IdleState:
+        print("Test 3: OK")
+    else:
+        print("Test 3: FAIL")
+
+
+def _test_energy_storage_4():
+    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=5, initial_soc=0.5)
+    es.send_action(0.5)
+    es.send_action(-0.5)
+    if math.isclose(es.energyStorageState.soc, 0.5) and math.isclose(es.energyStorageState.power, -0.5) and type(
+            es.energyStorageState) == DischargingState:
+        print("Test 4: OK")
+    else:
+        print("Test 4: FAIL")
