@@ -6,11 +6,11 @@ from utils import _get_ddpg_conif
 
 def main():
     n_episodes = 1000
-    environment = EnvironmentDDPG('./dataset/Test1.csv')
+    environment = EnvironmentDDPG('./dataset/dataset_test3.csv')
 
-    hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size = _get_ddpg_conif('rl_config.xml')
-    agent = DDPGAgentLite(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size)
-    _start_agent(agent, n_episodes)
+    # hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size = _get_ddpg_conif('rl_config.xml')
+    # agent = DDPGAgentLite(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size)
+    # _start_agent(agent, n_episodes)
 
 
 def _start_agent(agent, n_episodes):
