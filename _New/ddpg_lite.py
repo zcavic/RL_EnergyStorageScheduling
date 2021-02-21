@@ -42,7 +42,7 @@ class DDPGAgentLite:
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
         self.noise = OUNoise(self.environment.action_space)
 
-    def train(self, n_episodes):
+    def train(self, n_episodes, df_train):
         total_episode_rewards = []
         self.moving_average = 0.0
         for i_episode in range(n_episodes):
@@ -52,7 +52,7 @@ class DDPGAgentLite:
                 self.noise.min_sigma = 0.3
                 self.noise.max_sigma = 0.3
 
-            state = self.environment.reset()
+            state = self.environment.reset(df_train)
 
             self.noise.reset()
             total_episode_reward = 0
@@ -103,7 +103,7 @@ class DDPGAgentLite:
         plt.savefig("total_episode_rewards.png")
         plt.show()
 
-    def test(self):
+    def test(self, df_test):
         print('agent testing started')
         self.actor.load_state_dict(torch.load("model_actor"))
         self.actor.eval()

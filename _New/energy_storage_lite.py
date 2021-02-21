@@ -17,6 +17,9 @@ class EnergyStorageLite:
         else:
             self.energyStorageState = IdleState(self, initial_soc)
 
+    def capacity(self):
+        return self.max_e_mwh - (self.max_e_mwh * self.capacity_fade)
+
     def get_power(self):
         return self.energyStorageState.power
 
@@ -41,7 +44,7 @@ class EnergyStorageLite:
     # positive action is charging
     # with eps we check overcharging or overdischarging
     def _is_charging(self, action, eps=0.05):
-        if action > 0 and (self.energyStorageState.soc + (action / self.max_e_mwh) - eps) < 1:
+        if action > 0 and (self.energyStorageState.soc + (action / self.capacity()) - eps) < 1:
             return True
         else:
             return False
@@ -49,7 +52,7 @@ class EnergyStorageLite:
     # negative action is discharging
     # with eps we check overcharging or overdischarging
     def _is_discharging(self, action, eps=0.05):
-        if action < 0 and (self.energyStorageState.soc - (action / self.max_e_mwh) + eps) > 0:
+        if action < 0 and (self.energyStorageState.soc - (action / self.capacity()) + eps) > 0:
             return True
         else:
             return False
@@ -91,14 +94,14 @@ class EnergyStorageState:
 
     # 1h elapsed
     def update_soc(self):
-        if self.soc + (self.power / self._energy_storage.max_e_mwh) > 1:
+        if self.soc + (self.power / self._energy_storage.capacity()) > 1:
             self.soc = 1
             self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.soc)
-        elif self.soc + (self.power / self._energy_storage.max_e_mwh) < 0:
+        elif self.soc + (self.power / self._energy_storage.capacity()) < 0:
             self.soc = 0
             self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.soc)
         else:
-            self.soc = self.soc + (self.power / self._energy_storage.max_e_mwh)
+            self.soc = self.soc + (self.power / self._energy_storage.capacity())
 
 
 class IdleState(EnergyStorageState):

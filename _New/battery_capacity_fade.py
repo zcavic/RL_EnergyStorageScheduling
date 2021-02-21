@@ -14,7 +14,7 @@ def calculate(soc_series):
     f_t = _time_stress(len(soc_series) * 3600) * _soc_stress(np.mean(soc_series))
 
     capacity_fade = _capacity_fade(f_c, f_t)
-    print(capacity_fade)
+    return capacity_fade
 
 
 def _soc_stress(mean):

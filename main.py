@@ -1,26 +1,33 @@
 from _New.ddpg_lite import DDPGAgentLite
 from _New.environment_ddpg import EnvironmentDDPG
 import time
-from utils import _get_ddpg_conif
+from utils import _get_ddpg_conif, load_dataset, split_dataset
 
 
 def main():
-    n_episodes = 1000
-    environment = EnvironmentDDPG('./dataset/dataset_test3.csv')
+    dataset = load_dataset('./dataset/dataset_test3.csv')
+    df_train, df_test = split_dataset(dataset, 0.1)
+    agent = _create_agent(dataset)
 
-    # hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size = _get_ddpg_conif('rl_config.xml')
-    # agent = DDPGAgentLite(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size)
-    # _start_agent(agent, n_episodes)
-
-
-def _start_agent(agent, n_episodes):
     print('agent training started')
     t1 = time.time()
-    agent.train(n_episodes)
+    agent.train(1000, df_train)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
-    agent.test()
+    agent.test(df_test)
 
+
+def _create_agent(_df):
+    environment = EnvironmentDDPG(_df)
+    hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size = _get_ddpg_conif(
+        'rl_config.xml')
+    return DDPGAgentLite(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau,
+                         max_memory_size)
+
+
+def _training_and_test_dataset(dataset_path):
+    _df = load_dataset(dataset_path)
+    return split_dataset(_df, 0.1)
 
 
 if __name__ == '__main__':

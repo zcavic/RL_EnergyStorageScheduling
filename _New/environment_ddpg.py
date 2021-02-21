@@ -4,16 +4,19 @@ from abc import ABC
 from gym import spaces
 from _New.model_data_provider import ModelDataProvider
 from _New.energy_storage_factory import create_energy_storage
+from utils import select_random_day_start
+from datetime import datetime, timedelta
 
 
 class EnvironmentDDPG(gym.Env, ABC):
 
-    def __init__(self, dataset_path):
+    def __init__(self, dataset):
         super(EnvironmentDDPG, self).__init__()
+        self.current_datetime = None
         self.energy_storage = create_energy_storage()
         self._define_init_state()
         self._define_action_space()
-        self.model_data_provider = ModelDataProvider(dataset_path)
+        self.model_data_provider = ModelDataProvider(dataset)
 
     def step(self, action):
         initial_soc = self.energy_storage.energyStorageState.soc
@@ -24,8 +27,9 @@ class EnvironmentDDPG(gym.Env, ABC):
         reward = self._calculate_reward(actual_action, can_execute)
         return next_state, reward, done, actual_action, initial_soc
 
-    def reset(self):
-        self.energy_storage = create_energy_storage()
+    def reset(self, df_train):
+        self.current_datetime = select_random_day_start(df_train)
+        self.energy_storage = self.model_data_provider.create_energy_storage(self.current_datetime)
         self._define_init_state()
         return self.state
 
@@ -33,13 +37,14 @@ class EnvironmentDDPG(gym.Env, ABC):
         reward_scaling = 10
         reward_for_not_executed = -2
         if can_execute:
-            return (-self.model_data_provider.get_electricity_price_for(self.time_step) * actual_action)/reward_scaling
+            return (-self.model_data_provider.get_electricity_price_for(self.current_datetime) * actual_action)/reward_scaling
         else:
             return reward_for_not_executed/reward_scaling
 
     def _update_state(self):
         self.state = []
         self.time_step += 1
+        self.current_datetime += timedelta(hours=1)
         self.state.append(self.time_step / 25.0)
         self.state.append(self.energy_storage.energyStorageState.soc)
 

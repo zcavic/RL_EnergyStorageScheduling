@@ -1,10 +1,8 @@
 import os
+from datetime import timedelta
 from xml.dom import minidom
-
 import matplotlib.pyplot as plt
 import pandas as pd
-
-from environment.energy_storage import ChargingState, DischargingState, IdleState
 
 
 def load_dataset():
@@ -15,18 +13,20 @@ def load_dataset(path):
     script_dir = os.path.dirname(__file__)
     file_path = os.path.join(script_dir, path)
     df = pd.read_csv(file_path, index_col=0)
+    df.index = pd.to_datetime(df.index)
     return df
 
 
 def split_dataset(df, split_percentage):
-    split_index = int(df.index.size / 24 * split_percentage) * 24 - 1
-    df_train = df[df.index <= split_index]
-    df_test = df[df.index > split_index]
+    split_index = int(df.index.size / 24 * (1-split_percentage)) * 24 - 1
+    split_datetime = df.index[0] + timedelta(hours=split_index)
+    df_train = df[df.index <= split_datetime]
+    df_test = df[df.index > split_datetime]
     return df_train, df_test
 
 
 def extract_day_starts(df):
-    return df[(df.index % 24 == 0)]
+    return df[(df.index.hour == 0)]
 
 
 def get_day_from_day_start(day_start, df):
@@ -45,6 +45,10 @@ def select_random_day(df):
     # print(day_start_sample)
     day_df = get_day_from_day_start(day_start_sample, df)
     return day_df
+
+
+def select_random_day_start(df):
+    return df[(df.index.hour == 0)].sample(n=1).index[0]
 
 
 # vraca vrijednosti svih solara i loadova za jedan trenutak

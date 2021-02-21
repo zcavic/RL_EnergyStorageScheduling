@@ -1,4 +1,4 @@
-timestamp,DK_1_price_day_ahead,SOC,Action,,,,,intermediate,light,,hard
+timestamp,price_day_ahead,SOC,Action,,,,,intermediate,light,,hard
 1/1/2015 0:00,16.04,0,0,,,,,0,0.2,,0.4
 1/1/2015 1:00,16.04,0.2,1,,,,,0.2,0.2,,0.6
 1/1/2015 2:00,14.6,0.4,1,,,,,0.4,0.4,,0.8
