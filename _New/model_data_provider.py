@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import numpy as np
 from _New.battery_capacity_fade import calculate
 from _New.energy_storage_lite import EnergyStorageLite
@@ -11,8 +13,9 @@ class ModelDataProvider:
     def get_electricity_price_for(self, timestamp):
         return self._dataset.loc[timestamp, 'price_day_ahead']
 
-    def get_electricity_price(self):
-        return self._dataset['ElectricityPrice'].values
+    def get_electricity_price_for_day(self, timestamp):
+        end_day = timestamp + timedelta(hours=23)
+        return self._dataset.loc[timestamp:end_day, 'price_day_ahead'].values
 
     def create_energy_storage(self, datetime):
         capacity_fade = calculate(np.array(self._dataset.loc[:datetime, 'SOC']))

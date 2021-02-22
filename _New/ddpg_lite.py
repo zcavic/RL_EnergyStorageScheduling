@@ -108,7 +108,8 @@ class DDPGAgentLite:
         self.actor.load_state_dict(torch.load("model_actor"))
         self.actor.eval()
 
-        state = self.environment.reset()
+        state = self.environment.reset(df_test)
+        electricity_price = self.environment.model_data_provider.get_electricity_price_for_day(self.environment.current_datetime)
         total_episode_reward = 0
         proposed_storage_powers = []
         actual_storage_powers = []
@@ -130,8 +131,7 @@ class DDPGAgentLite:
             state = next_state
 
         print('total_episode_reward', total_episode_reward)
-        plot_daily_results(24, proposed_storage_powers, actual_storage_powers, storage_socs,
-                           self.environment.model_data_provider.get_electricity_price())
+        plot_daily_results(24, proposed_storage_powers, actual_storage_powers, storage_socs, electricity_price)
 
     def _update(self):
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)

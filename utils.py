@@ -25,6 +25,12 @@ def split_dataset(df, split_percentage):
     return df_train, df_test
 
 
+def split_dataset(df):
+    df_test = select_random_day(df)
+    df_train = df.drop(df_test.index)
+    return df_train, df_test
+
+
 def extract_day_starts(df):
     return df[(df.index.hour == 0)]
 

@@ -5,7 +5,7 @@ from gym import spaces
 from _New.model_data_provider import ModelDataProvider
 from _New.energy_storage_factory import create_energy_storage
 from utils import select_random_day_start
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 
 class EnvironmentDDPG(gym.Env, ABC):
@@ -22,13 +22,13 @@ class EnvironmentDDPG(gym.Env, ABC):
         initial_soc = self.energy_storage.energyStorageState.soc
         power = action[0] * self.energy_storage.max_p_mw
         actual_action, can_execute = self.energy_storage.send_action(power)
+        reward = self._calculate_reward(actual_action, can_execute)
         next_state = self._update_state()
         done = self.time_step == 24
-        reward = self._calculate_reward(actual_action, can_execute)
         return next_state, reward, done, actual_action, initial_soc
 
-    def reset(self, df_train):
-        self.current_datetime = select_random_day_start(df_train)
+    def reset(self, df):
+        self.current_datetime = select_random_day_start(df)
         self.energy_storage = self.model_data_provider.create_energy_storage(self.current_datetime)
         self._define_init_state()
         return self.state
