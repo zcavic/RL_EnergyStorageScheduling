@@ -1,10 +1,10 @@
 import gym
 from gym import spaces
 import numpy as np
-from power_algorithms.power_flow import PowerFlow
-import power_algorithms.network_management as nm
+from obsolete.power_algorithms.power_flow import PowerFlow
+import obsolete.power_algorithms.network_management as nm
 from gym.spaces.space import Space
-from environment.energy_storage import EnergyStorage
+from obsolete.environment.energy_storage import EnergyStorage
 # Custom space
 from utils import get_scaling_from_row, get_energy_storage_state
 

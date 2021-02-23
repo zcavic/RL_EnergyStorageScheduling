@@ -1,7 +1,6 @@
-import power_algorithms.network_definition as grid
+import obsolete.power_algorithms.network_definition as grid
 import pandapower as pp
 import pandas as pd
-from environment.energy_storage import EnergyStorage
 
 
 class NetworkManagement:

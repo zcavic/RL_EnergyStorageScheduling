@@ -1,5 +1,5 @@
 import pandapower as pp
-import power_algorithms.network_definition as grid
+import obsolete.power_algorithms.network_definition as grid
 import pandas as pd
 import os
 import random

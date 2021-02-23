@@ -1,6 +1,6 @@
-from environment.energy_storage import EnergyStorage
-from heuristic_algorithm.environment_heuristic import EnvironmentHeuristic
-from heuristic_algorithm.schedule_data import ScheduleData
+from obsolete.environment.energy_storage import EnergyStorage
+from obsolete.heuristic_algorithm.environment_heuristic import EnvironmentHeuristic
+from obsolete.heuristic_algorithm.schedule_data import ScheduleData
 
 
 class HeuristicStorageScheduler(object):

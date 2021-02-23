@@ -1,7 +1,6 @@
-from environment.energy_storage import EnergyStorage
-import power_algorithms.network_definition as grid
-import power_algorithms.network_management as nm
-from power_algorithms.power_flow import PowerFlow
+from obsolete.environment.energy_storage import EnergyStorage
+import obsolete.power_algorithms.network_management as nm
+from obsolete.power_algorithms.power_flow import PowerFlow
 
 
 class EnvironmentHeuristic:
