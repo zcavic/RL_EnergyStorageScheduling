@@ -5,14 +5,14 @@ import torch.autograd
 import numpy as np
 from utils import *
 from torch.autograd import Variable
-from _New.action import reverse_action_tensor, reverse_action
-from _New.actor import Actor
-from _New.critic import Critic
-from _New.ou_noise import OUNoise
-from _New.replay_buffer import ReplayBuffer
+from ddpg.action import reverse_action_tensor, reverse_action
+from ddpg.actor import Actor
+from ddpg.critic import Critic
+from ddpg.ou_noise import OUNoise
+from ddpg.replay_buffer import ReplayBuffer
 
 
-class DDPGAgentLite:
+class DDPGAgent:
     def __init__(self, environment, hidden_size=128, actor_learning_rate=1e-5, critic_learning_rate=1e-4, gamma=1.0,
                  tau=1e-3, max_memory_size=600000):
         self.environment = environment
@@ -66,7 +66,7 @@ class DDPGAgentLite:
                 action = self._get_action(state)
                 action = self.noise.get_action(action, self.timestamp)
                 if abs(action) > 1.0:
-                    print('Warning: ddpg_lite.py.train - abs(action) > 1')
+                    print('Warning: ddpg.py.train - abs(action) > 1')
 
                 next_state, reward, done, _, _ = self.environment.step(action)
                 total_episode_reward += reward
@@ -79,7 +79,7 @@ class DDPGAgentLite:
                 state = next_state
 
                 if next_time_step_idx != self.environment.time_step:
-                    print('Warning: ddpg_lite.py.train - something may be wrong with timestep indexing')
+                    print('Warning: ddpg.py.train - something may be wrong with timestep indexing')
 
             if i_episode == 0:
                 self.moving_average = total_episode_reward

@@ -1,8 +1,8 @@
 from datetime import timedelta
 
 import numpy as np
-from _New.battery_capacity_fade import calculate
-from _New.energy_storage_lite import EnergyStorageLite
+from model.battery_capacity_fade import calculate
+from model.energy_storage import EnergyStorage
 
 
 class ModelDataProvider:
@@ -20,4 +20,4 @@ class ModelDataProvider:
     def create_energy_storage(self, datetime):
         capacity_fade = calculate(np.array(self._dataset.loc[:datetime, 'SOC']))
         soc = self._dataset.loc[datetime, 'SOC']
-        return EnergyStorageLite(max_p_mw=1, max_e_mwh=6, initial_soc=soc, capacity_fade=capacity_fade)
+        return EnergyStorage(max_p_mw=1, max_e_mwh=6, initial_soc=soc, capacity_fade=capacity_fade)

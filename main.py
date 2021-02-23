@@ -1,5 +1,5 @@
-from _New.ddpg_lite import DDPGAgentLite
-from _New.environment_ddpg import EnvironmentDDPG
+from ddpg.ddpg import DDPGAgent
+from ddpg.environment_ddpg import EnvironmentDDPG
 import time
 from utils import _get_ddpg_conif, load_dataset, split_dataset
 
@@ -21,8 +21,8 @@ def _create_agent(_df):
     environment = EnvironmentDDPG(_df)
     hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau, max_memory_size = _get_ddpg_conif(
         'rl_config.xml')
-    return DDPGAgentLite(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau,
-                         max_memory_size)
+    return DDPGAgent(environment, hidden_size, actor_learning_rate, critic_learning_rate, gamma, tau,
+                     max_memory_size)
 
 
 def _training_and_test_dataset(dataset_path):

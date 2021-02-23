@@ -1,7 +1,7 @@
 import math
 
 
-class EnergyStorageLite:
+class EnergyStorage:
 
     def __init__(self, max_p_mw, max_e_mwh, initial_power=0.0, initial_soc=0.0, capacity_fade=0.0):
 
@@ -159,7 +159,7 @@ class DischargingState(EnergyStorageState):
 
 
 def _test_energy_storage1():
-    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=4, initial_soc=0)
+    es = EnergyStorage(max_p_mw=1, max_e_mwh=4, initial_soc=0)
     check = 0
     es.send_action(1)
     if math.isclose(es.energyStorageState.soc, 0.25) and math.isclose(es.energyStorageState.power, 1) and type(
@@ -204,7 +204,7 @@ def _test_energy_storage1():
 
 
 def _test_energy_storage_2():
-    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=5, initial_soc=0.83)
+    es = EnergyStorage(max_p_mw=1, max_e_mwh=5, initial_soc=0.83)
     es.send_action(1.2)
     if math.isclose(es.energyStorageState.soc, 1) and math.isclose(es.energyStorageState.power, 0) and type(
             es.energyStorageState) == IdleState:
@@ -214,7 +214,7 @@ def _test_energy_storage_2():
 
 
 def _test_energy_storage_3():
-    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=5, initial_soc=0.18)
+    es = EnergyStorage(max_p_mw=1, max_e_mwh=5, initial_soc=0.18)
     es.send_action(-1.2)
     if math.isclose(es.energyStorageState.soc, 0) and math.isclose(es.energyStorageState.power, 0) and type(
             es.energyStorageState) == IdleState:
@@ -224,7 +224,7 @@ def _test_energy_storage_3():
 
 
 def _test_energy_storage_4():
-    es = EnergyStorageLite(max_p_mw=1, max_e_mwh=5, initial_soc=0.5)
+    es = EnergyStorage(max_p_mw=1, max_e_mwh=5, initial_soc=0.5)
     es.send_action(0.5)
     es.send_action(-0.5)
     if math.isclose(es.energyStorageState.soc, 0.5) and math.isclose(es.energyStorageState.power, -0.5) and type(

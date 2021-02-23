@@ -4,6 +4,8 @@ from pandas import np
 
 
 def calculate(soc_series):
+    if len(soc_series) == 0:
+        return 0
     f_c = 0
     for rng, mean, count, i_start, i_end in rainflow.extract_cycles(soc_series):
         soc_stress = _soc_stress(mean)
