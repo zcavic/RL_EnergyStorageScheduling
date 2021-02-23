@@ -18,6 +18,6 @@ class ModelDataProvider:
 
     def create_energy_storage(self, datetime):
         end_day = datetime-timedelta(hours=1)
-        capacity_fade = calculate(np.array(self._dataset.loc[:end_day, 'SOC']))
+        capacity_fade = calculate(np.array(self._dataset.loc[:end_day, 'SOC']))  # TODO dodati u dataset capacity fade
         soc = self._dataset.loc[datetime, 'SOC']
         return EnergyStorage(max_p_mw=1, max_e_mwh=6, initial_soc=soc, capacity_fade=capacity_fade)

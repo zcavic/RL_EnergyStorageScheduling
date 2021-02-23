@@ -3,7 +3,6 @@ import numpy as np
 from abc import ABC
 from gym import spaces
 from model.model_data_provider import ModelDataProvider
-from model.energy_storage_factory import create_energy_storage
 from utils import select_random_day_start
 from datetime import timedelta
 
@@ -35,10 +34,10 @@ class EnvironmentDDPG(gym.Env, ABC):
 
     def _calculate_reward(self, actual_action, can_execute):
         reward_scaling = 10
-        reward_for_not_executed = -2
+        reward_for_not_executed = -1
         if can_execute:
             return (-self.model_data_provider.get_electricity_price_for(
-                self.current_datetime) * actual_action) / reward_scaling
+                self.current_datetime) * actual_action) / reward_scaling  # TODO dodati cenu capacity fade (fade * cena baterije)
         else:
             return reward_for_not_executed / reward_scaling
 
@@ -71,5 +70,8 @@ class EnvironmentDDPG(gym.Env, ABC):
         self.time_step = 0  # 0..23, ako je 24, onda ce next_state biti None
         self.agent_index = 0  # za sada imamo jednog agenta
         self.state.append(0)  # time step
-        self.state.append(0)  # initial SoC
+        if self.energy_storage is None:  # set initial SoC
+            self.state.append(0)
+        else:
+            self.state.append(self.energy_storage.energyStorageState.soc)
         self.state_space_dims = len(self.state)

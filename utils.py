@@ -31,6 +31,12 @@ def split_dataset(df):
     return df_train, df_test
 
 
+def split_dataset_2(df):
+    df_test = select_last_day(df)
+    df_train = df.drop(df_test.index)
+    return df_train, df_test
+
+
 def extract_day_starts(df):
     return df[(df.index.hour == 0)]
 
@@ -50,6 +56,12 @@ def select_random_day(df):
     # print("day_start_sample")
     # print(day_start_sample)
     day_df = get_day_from_day_start(day_start_sample, df)
+    return day_df
+
+
+def select_last_day(df):
+    df_day_starts = extract_day_starts(df)
+    day_df = get_day_from_day_start(df_day_starts.iloc[[-1]], df)
     return day_df
 
 

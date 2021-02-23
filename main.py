@@ -1,17 +1,17 @@
 from ddpg.ddpg import DDPGAgent
 from ddpg.environment_ddpg import EnvironmentDDPG
 import time
-from utils import _get_ddpg_conif, load_dataset, split_dataset
+from utils import _get_ddpg_conif, load_dataset, split_dataset, split_dataset_2
 
 
 def main():
-    dataset = load_dataset('./dataset/dataset_test1.csv')
-    df_train, df_test = split_dataset(dataset)
+    dataset = load_dataset('./dataset/dataset_test3.csv')
+    df_train, df_test = split_dataset_2(dataset)
     agent = _create_agent(dataset)
 
     print('agent training started')
     t1 = time.time()
-    agent.train(100, df_train)
+    agent.train(50000, df_train)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
     agent.test(df_test)
