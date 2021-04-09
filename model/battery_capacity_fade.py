@@ -4,8 +4,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+class CapacityFade:
+    def __init__(self, soc_history):
+        self.fade = calculate(soc_history)
+        self.soc_history = soc_history
+        self.fade_delta = 0
+
+    def update_capacity_fade(self, soc):
+        self.soc_history = np.append(self.soc_history, soc)
+        new_fade = calculate(self.soc_history)
+        self.fade_delta = new_fade - self.fade
+        self.fade = new_fade
+
+
 def calculate(soc_series):
-    if soc_series is None or len(soc_series) <= 1:
+    if soc_series is None or len(soc_series) <= 24:
         return 0
     f_c = 0
     for rng, mean, count, i_start, i_end in rainflow.extract_cycles(soc_series):  # TODO da li je range isto sto i amplituda?
@@ -56,5 +69,5 @@ def test_calculation(soc_series):
     plt.plot(x_axis, capacity_fade)
     plt.xlabel('time [days]')
     plt.ylabel('capacity fade [%}')
-    plt.savefig("capacity_fade.png")
+    plt.savefig("fade.png")
     plt.show()

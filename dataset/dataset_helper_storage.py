@@ -1,9 +1,13 @@
 from datetime import datetime, timedelta
+
+from model.battery_capacity_fade import calculate
 from obsolete.environment.energy_storage import EnergyStorage
 import obsolete.power_algorithms.network_management as nm
 from obsolete.power_algorithms.power_flow import PowerFlow
 import pandas as pd
 import os
+
+from utils import load_dataset, save_dataset
 
 
 def create_dataset():
@@ -32,7 +36,7 @@ def create_dataset():
                           _energy_storage.energyStorageState.soc / _energy_storage.max_e_mwh,
                           _energy_storage.energyStorageState.days_in_idle,
                           _energy_storage.energyStorageState.no_of_cycles,
-                          (1 - _energy_storage.energyStorageState.capacity_fade)]
+                          (1 - _energy_storage.energyStorageState.fade)]
         _storage_load = _energy_storage.max_p_kw * _storage_load_diagram[single_datetime.hour]
         x, y, t = _energy_storage.send_action(_storage_load)
         index = index + 1
@@ -45,6 +49,15 @@ def create_dataset():
         #     sum_fade = 0
 
     _save_energy_storage_df_to_csv(_df)
+
+
+def add_capacity_fade_to_dataset(dataset_filepath):
+    dataset = load_dataset(dataset_filepath)
+    for ind in dataset.index:
+        dataset.loc[ind, 'fade'] = calculate(dataset['SOC'][:ind].to_list())
+        if ind.hour == 0 and ind.day == 1:
+            print(ind)
+    save_dataset(dataset, dataset_filepath)
 
 
 def _date_range(start_date, end_date, delta=timedelta(days=1)):
@@ -60,8 +73,7 @@ def _create_energy_storage():
     return EnergyStorage(1, network_manager.power_grid, power_flow)
 
 
-def _save_energy_storage_df_to_csv(df):
+def _save_energy_storage_df_to_csv(df, path):
     script_dir = os.path.dirname(__file__)
-    file_path = os.path.join(script_dir, './energy_storage_dataset.csv')
-
+    file_path = os.path.join(script_dir, path)
     df.to_csv(file_path, index=True)

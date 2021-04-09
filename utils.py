@@ -17,6 +17,12 @@ def load_dataset(path):
     return df
 
 
+def save_dataset(dataset, path):
+    script_dir = os.path.dirname(__file__)
+    file_path = os.path.join(script_dir, path)
+    dataset.to_csv(file_path, index=True)
+
+
 def split_dataset(df, split_percentage):
     split_index = int(df.index.size / 24 * (1-split_percentage)) * 24 - 1
     split_datetime = df.index[0] + timedelta(hours=split_index)

@@ -36,8 +36,10 @@ class EnvironmentDDPG(gym.Env, ABC):
         reward_scaling = 10
         reward_for_not_executed = -1
         if can_execute:
-            return (-self.model_data_provider.get_electricity_price_for(
-                self.current_datetime) * actual_action) / reward_scaling  # TODO dodati cenu capacity fade (fade * cena baterije)
+            price_arbitration = -self.model_data_provider.get_electricity_price(self.current_datetime) * actual_action
+            battery_price = 625000 * self.energy_storage.max_e_mwh
+            capacity_fade_price = -self.energy_storage.capacity_fade.fade_delta * battery_price
+            return (price_arbitration + capacity_fade_price) / reward_scaling
         else:
             return reward_for_not_executed / reward_scaling
 

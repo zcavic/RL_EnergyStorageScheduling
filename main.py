@@ -1,3 +1,4 @@
+from dataset.dataset_helper_storage import add_capacity_fade_to_dataset
 from ddpg.ddpg import DDPGAgent
 from ddpg.environment_ddpg import EnvironmentDDPG
 import time
@@ -11,7 +12,7 @@ def main():
 
     print('agent training started')
     t1 = time.time()
-    agent.train(50000, df_train)
+    agent.train(1000, df_train)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
     agent.test(df_test)

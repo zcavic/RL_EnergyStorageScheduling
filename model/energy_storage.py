@@ -1,13 +1,14 @@
 import math
+from model.battery_capacity_fade import CapacityFade
 
 
 class EnergyStorage:
 
-    def __init__(self, max_p_mw, max_e_mwh, initial_power=0.0, initial_soc=0.0, capacity_fade=0.0):
+    def __init__(self, max_p_mw, max_e_mwh, initial_power=0.0, initial_soc=0.0, soc_history=[]):
 
         self.max_p_mw = max_p_mw
         self.max_e_mwh = max_e_mwh
-        self.capacity_fade = capacity_fade
+        self.capacity_fade = CapacityFade(soc_history)
         if initial_power < 0:
             self.energyStorageState = DischargingState(self, initial_soc)
             self.energyStorageState.set_power(initial_power)
@@ -18,7 +19,7 @@ class EnergyStorage:
             self.energyStorageState = IdleState(self, initial_soc)
 
     def capacity(self):
-        return self.max_e_mwh - (self.max_e_mwh * self.capacity_fade)
+        return self.max_e_mwh - (self.max_e_mwh * self.capacity_fade.fade)
 
     def get_power(self):
         return self.energyStorageState.power
@@ -102,6 +103,7 @@ class EnergyStorageState:
             self._energy_storage.energyStorageState = IdleState(self._energy_storage, self.soc)
         else:
             self.soc = self.soc + (self.power / self._energy_storage.capacity())
+        self._energy_storage.capacity_fade.update_capacity_fade(self.soc)
 
 
 class IdleState(EnergyStorageState):
