@@ -3,16 +3,25 @@ from ddpg.ddpg import DDPGAgent
 from ddpg.environment_ddpg import EnvironmentDDPG
 import time
 from utils import _get_ddpg_conif, load_dataset, split_dataset, split_dataset_2
+import logging
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(levelname)s %(message)s',
+                        datefmt='%d-%m-%Y %H:%M:%S',
+                        filename='EnergyStorageSchedule.log',
+                        filemode='w')
+
+    logging.debug('************  Energy Storage Scheduling ************')
+
     dataset = load_dataset('./dataset/dataset_test3.csv')
     df_train, df_test = split_dataset_2(dataset)
     agent = _create_agent(dataset)
 
     print('agent training started')
     t1 = time.time()
-    agent.train(1000, df_train)
+    agent.train(100, df_train)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
     agent.test(df_test)

@@ -5,6 +5,7 @@ from gym import spaces
 from model.model_data_provider import ModelDataProvider
 from utils import select_random_day_start
 from datetime import timedelta
+import logging
 
 
 class EnvironmentDDPG(gym.Env, ABC):
@@ -24,6 +25,9 @@ class EnvironmentDDPG(gym.Env, ABC):
         reward = self._calculate_reward(actual_action, can_execute)
         next_state = self._update_state()
         done = self.time_step == 24
+        logging.debug('Timestamp: %s ProposedAction: %s ExecutedAction: %s InitialSoc: %s FinalSoc: %s Reward: %s',
+                      self.current_datetime, power, actual_action, initial_soc,
+                      self.energy_storage.energyStorageState.soc, reward)
         return next_state, reward, done, actual_action, initial_soc
 
     def reset(self, df):
