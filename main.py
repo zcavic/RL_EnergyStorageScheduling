@@ -21,7 +21,7 @@ def main():
 
     print('agent training started')
     t1 = time.time()
-    agent.train(100, df_train)
+    agent.train(5000, df_train)
     t2 = time.time()
     print('agent training finished in', t2 - t1)
     agent.test(df_test)

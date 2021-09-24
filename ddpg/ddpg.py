@@ -45,6 +45,8 @@ class DDPGAgent:
         self.noise = OUNoise(self.environment.action_space)
         self.writer = SummaryWriter("runs/mnist")
         self.iterator = 0
+        self.critic_total_grad = 0
+        self.actor_total_grad = 0
 
     def train(self, n_episodes, df_train):
         total_episode_rewards = []
@@ -155,15 +157,11 @@ class DDPGAgent:
         next_Q = self.critic_target.forward(next_states, next_actions.detach())
         Qprime = rewards + (1.0 - dones) * self.gamma * next_Q
         critic_loss = self.critic_criterion(Qvals, Qprime.detach())
-        self.writer.add_scalar('Critic Loss/train', critic_loss.tolist(), self.iterator)
 
         # actor loss
         next_actions_pol_loss = self.actor.forward(states)
         next_actions_pol_loss = reverse_action_tensor(next_actions_pol_loss, self.environment.action_space)
         policy_loss = -self.critic.forward(states, next_actions_pol_loss).mean()
-        self.writer.add_scalar('Actor Loss/train', policy_loss.tolist(), self.iterator)
-
-        self.iterator += 1
 
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
@@ -178,6 +176,33 @@ class DDPGAgent:
 
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
+
+        self._update_tensorboard(critic_loss, policy_loss)
+
+    def _update_tensorboard(self, critic_loss, policy_loss):
+
+        self.writer.add_scalar('Critic Loss/train', critic_loss.tolist(), self.iterator)
+        self.writer.add_scalar('Actor Loss/train', policy_loss.tolist(), self.iterator)
+
+        self.critic_total_grad = 0
+        for cnt, (name, weight_or_bias_parameters) in enumerate(self.critic.named_parameters()):
+            critic_grad = weight_or_bias_parameters.grad.data.norm(p=2).item()
+            self.writer.add_scalar(f'critic_grad_norms/{name}', critic_grad, self.iterator)
+            self.critic_total_grad += critic_grad ** 2
+
+        self.critic_total_grad = self.critic_total_grad ** (1 / 2)
+        self.writer.add_scalar(f'critic_total_grad_norms/total', self.critic_total_grad, self.iterator)
+
+        self.actor_total_grad = 0
+        for cnt, (name, weight_or_bias_parameters) in enumerate(self.actor.named_parameters()):
+            actor_grad = weight_or_bias_parameters.grad.data.norm(p=2).item()
+            self.writer.add_scalar(f'actor_grad_norms/{name}', actor_grad, self.iterator)
+            self.actor_total_grad += actor_grad ** 2
+
+        self.actor_total_grad = self.actor_total_grad ** (1 / 2)
+        self.writer.add_scalar(f'actor_total_grad_norms/total', self.actor_total_grad, self.iterator)
+
+        self.iterator += 1
 
     def _get_action(self, state):
         state = Variable(torch.from_numpy(state).float().unsqueeze(0))
