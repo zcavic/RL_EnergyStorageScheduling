@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.autograd
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
+
 from utils import *
 from torch.autograd import Variable
 from ddpg.action import reverse_action_tensor, reverse_action
@@ -41,6 +43,8 @@ class DDPGAgent:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
         self.noise = OUNoise(self.environment.action_space)
+        self.writer = SummaryWriter("runs/mnist")
+        self.iterator = 0
 
     def train(self, n_episodes, df_train):
         total_episode_rewards = []
@@ -102,6 +106,7 @@ class DDPGAgent:
         plt.ylabel('Total episode reward')
         plt.savefig("total_episode_rewards.png")
         plt.show()
+        self.writer.close()
 
     def test(self, df_test):
         print('agent testing started')
@@ -109,7 +114,8 @@ class DDPGAgent:
         self.actor.eval()
 
         state = self.environment.reset(df_test)
-        electricity_price = self.environment.model_data_provider.get_electricity_price_for_day(self.environment.current_datetime)
+        electricity_price = self.environment.model_data_provider.get_electricity_price_for_day(
+            self.environment.current_datetime)
         total_episode_reward = 0
         proposed_storage_powers = []
         actual_storage_powers = []
@@ -145,14 +151,19 @@ class DDPGAgent:
         # output from actor network is normalized so:
         next_actions = reverse_action_tensor(next_actions, self.environment.action_space)
 
+        # critic loss
         next_Q = self.critic_target.forward(next_states, next_actions.detach())
         Qprime = rewards + (1.0 - dones) * self.gamma * next_Q
         critic_loss = self.critic_criterion(Qvals, Qprime.detach())
+        self.writer.add_scalar('Critic Loss/train', critic_loss.tolist(), self.iterator)
 
         # actor loss
         next_actions_pol_loss = self.actor.forward(states)
         next_actions_pol_loss = reverse_action_tensor(next_actions_pol_loss, self.environment.action_space)
         policy_loss = -self.critic.forward(states, next_actions_pol_loss).mean()
+        self.writer.add_scalar('Actor Loss/train', policy_loss.tolist(), self.iterator)
+
+        self.iterator += 1
 
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
